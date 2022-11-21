@@ -197,11 +197,11 @@ def Immediate(val,size,rotate=False):
   num = bin(int(val))[2:].zfill(size)
   # rotate
   if rotate:
+    # number needs rotating
     if len(num) > size:
       a = num.index("1")
       b = max(i for i, val in enumerate(num) if val == "1") + 1
-      if b % 2 != 0:
-        b += 1
+      b += 1 if b % 2 != 0 else 0
       num = str(bin(b//2)[2:]).zfill(4) + num[a:b].zfill(8)
     else:
       num = "0000" + num
@@ -245,7 +245,6 @@ def advance(mnemonic,operands):
       else:
         operand2 = "0"*8 + rm
     result = m.cond+"00"+i+m.code+s+rn+rd+operand2 
-
   # psr transfer
   elif m.code == "0":
     # MRS
@@ -263,15 +262,21 @@ def advance(mnemonic,operands):
       else:
         i = "0"
         sourceoperand = "0"*8+o.value[1]
-      n = "1" if o.extra[0] == "" else "0" # 0 if flag present
+      n = "0" if o.extra[0] == "FLG" else "1" # 0 if flag present
       p = o.value[0]
       result = m.cond+"00"+i+"10"+p+"10100"+n+"1111"+sourceoperand
-  # multiply
+  # multiply and multiply-accumulate
   elif m.code == "1":
-    result = m.code
-  # multiply long
+    a = "1" if m.name == "MLA" else "0"
+    s = "1" if m.extra == "S" else "0"
+    rn = o.value[3] if m.name == "MLA" else "0000"
+    result = m.cond+"000000"+a+s+o.value[0]+rn+o.value[2]+"1001"+o.value[1]
+  # multiply long and multiply-accumulate long
   elif m.code == "2":
-    result = m.code
+    u = "1" if m.name[0] == "S" else "0"
+    a = "1" if m.name[1:] == "MLAL" else "0"
+    s = "1" if m.extra == "S" else "0"
+    result = m.cond+"00001"+u+a+s+o.value[1]+o.value[0]+o.value[3]+"1001"+o.value[2]
   # single data swap
   elif m.code == "3":
     result = m.code

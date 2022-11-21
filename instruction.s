@@ -15,19 +15,12 @@ MRS R0,CPSR
 BIC R0,R0,#0x1F
 ORR R0,R0,#3
 MSR CPSR,R0
-MSR CPSR_fc,#0xF0000000
+MSR CPSR_flg,#0xF0000000
 
-@MSR   CPSR_all,Rm
-@MSR   CPSR_flg,Rm
-@MSR   CPSR_flg,#0xA0000000
-@MRS Rd,CPSR
+@multiply
+MUL         R1,R2,R3
+MLAEQS      R1,R2,R3,R4
 
-@In privileged modes the instructions behave as follows:
-@MSR   CPSR_all,Rm
-@MSR   CPSR_flg,Rm
-@MSR   CPSR_flg,#0x50000000
-@MRS   Rd,CPSR
-@MSR   SPSR_all,Rm
-@MSR   SPSR_flg,Rm
-@MSR   SPSR_flg,#0xC0000000
-@MRS Rd,SPSR
+@multiply long
+UMULL R1,R4,R2,R3 
+UMLALS R1,R5,R2,R3
