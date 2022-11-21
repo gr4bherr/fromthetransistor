@@ -106,7 +106,8 @@ registers = {
   "PC":"1111",
   "R15":"1111",
   # program status registers
-  "CPSR":"idkman"
+  "CPSR":"0",
+  "SPSR":"1"
 }
 shiftname = {
   "LSL":"00",
@@ -129,14 +130,11 @@ bigendian = False # big endian / litte endian
 # registers as class?
 # work in hexa?
 
-def operand2():
-  None
-
 class Mnemonic:
   def __init__(self,instr):
-    self.name = instr
     # mnemonic = opcodes[code] + {cond} + {extra}
     for item in opcodes:
+      self.name = item
       if item in instr:
         self.code = opcodes[item]
         self.extra = instr[len(item):]
@@ -153,11 +151,21 @@ class Operands:
     self.value = []
     self.type = []
     self.extra = []
-    for item in self.name:
+    for i,item in enumerate(self.name):
       shift = False
       # shift
       if item[:3] in shiftname:
         shift = True
+      # extra
+      if item[-1] in ["!","^"]:
+        self.extra.append(item[-1])
+        item = item[:-1]
+      elif "_" in item:
+        self.extra.append(item[item.index("_")+1:])
+        item = item[:item.index("_")]
+      else:
+        self.extra.append("")
+      self.name[i] = item
       ## immediate value
       if "#" in item or item[:3] == "RRX":
         self.type.append("Imm")
@@ -165,10 +173,10 @@ class Operands:
           if item[:3] == "RRX":
             shiftamount = "00000"
           else:
-            shiftamount = Immediate(item[5:], 5)
+            shiftamount = Immediate(item, 5)
           self.value.append(shiftamount+shiftname[item[:3]]+"0")
         else:
-          self.value.append(Immediate(item[1:], 12)) #todo not sure what size this should be (line 210)
+          self.value.append(Immediate(item, 8, True))
       ## register
       else:
         self.type.append("Reg")
@@ -176,16 +184,32 @@ class Operands:
           self.value.append(registers[item[4:]]+"0"+shiftname[item[:3]]+"1")
         else:
           self.value.append(registers[item[0:]])
+
       if shift:
         self.type[-1] += "Shift"
+        
 
+def Immediate(val,size,rotate=False):
+  val = val[val.index("#")+1:]
+  # hex
+  if len(val) > 2 and val[1] == "X":
+    val = str(int(val[2:],16))
+  num = bin(int(val))[2:].zfill(size)
+  # rotate
+  if rotate:
+    if len(num) > size:
+      a = num.index("1")
+      b = max(i for i, val in enumerate(num) if val == "1") + 1
+      if b % 2 != 0:
+        b += 1
+      num = str(bin(b//2)[2:]).zfill(4) + num[a:b].zfill(8)
+    else:
+      num = "0000" + num
+  return num
 
-def Immediate(val,size):
-  return bin(int(val))[2:].zfill(size)
 
 def advance(mnemonic,operands):
   print(mnemonic,operands)
-
   m = Mnemonic(mnemonic)
   print([m.name,m.code,m.cond,m.extra])
   o = Operands(operands)
@@ -194,12 +218,12 @@ def advance(mnemonic,operands):
   # data processing
   if len(m.code) == 4:
     # MOV, MVN
-    if m.code in ["1101","1111"]: 
+    if m.name in ["MOV","MVN"]:
       rn = "0000"
       rd = o.value[0]
       rm = o.value[1]
     # CMP, CMN, TEQ, TST
-    elif m.code in ["1000","1001","1010","1011"]:
+    elif m.name in ["CMP","CMN","TEQ","TST"]:
       rn = o.value[0]
       rd = "0000"
       rm = o.value[1]
@@ -220,13 +244,28 @@ def advance(mnemonic,operands):
         operand2 = o.value[-1] + rm
       else:
         operand2 = "0"*8 + rm
-
-
-    # cond 00 i opcode s rn rd operand2
     result = m.cond+"00"+i+m.code+s+rn+rd+operand2 
+
   # psr transfer
   elif m.code == "0":
-    result = m.code
+    # MRS
+    if m.name == "MRS":
+      i = "0" # srouce op type
+      p = o.value[1] # destination psr
+      result = m.cond+"00"+i+"10"+p+"001111"+"0"*16
+    # MSR
+    else:
+      # source op is imm
+      if o.type[1] == "Imm":
+        i = "1"
+        sourceoperand = o.value[1]
+      # source op is reg
+      else:
+        i = "0"
+        sourceoperand = "0"*8+o.value[1]
+      n = "1" if o.extra[0] == "" else "0" # 0 if flag present
+      p = o.value[0]
+      result = m.cond+"00"+i+"10"+p+"10100"+n+"1111"+sourceoperand
   # multiply
   elif m.code == "1":
     result = m.code
@@ -266,7 +305,10 @@ def advance(mnemonic,operands):
   print("result:",end=" ") 
   for i in range(0,len(result),4):
     print(result[i:i+4],end=" ")
-  print("---- %08x" % int(result, 2))
+  try:
+    print("---- %08x" % int(result, 2))
+  except:
+    print("---- not valid hexa")
   print()
 
 if __name__ == "__main__":
