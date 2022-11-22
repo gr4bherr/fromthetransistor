@@ -17,19 +17,22 @@ ORR R0,R0,#3
 MSR CPSR,R0
 MSR CPSR_flg,#0xF0000000
 
-@multiply
+@ multiply
 MUL         R1,R2,R3
 MLAEQS      R1,R2,R3,R4
 
-@multiply long
+@ multiply long
 UMULL R1,R4,R2,R3 
 UMLALS R1,R5,R2,R3
 
-@single data transfer
-STR R1, [R2,+R4]!
-STR R1, [R2],-R4
-LDR R1, [R2,#+16]
+@ single data transfer
+STR R1, [R2,R4]!
+STR R1, [R2],R4
+LDR R1, [R2,#16]
 LDR R1, [R2,R3, LSL#2] 
-LDREQB R1, [R6,#-5]
-@STR R1, PLACE
-@PLACE
+LDREQB R1, [R6,#5]
+@ halfword and signed data transfer
+LDRH R1, [R2,-R3]!
+STRH R3, [R4,#14]
+LDRSB R8, [R2],#-223
+LDRNESH R11, [R0]

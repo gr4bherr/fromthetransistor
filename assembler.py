@@ -76,49 +76,50 @@ opcodes = {
   "B"    : "10"
 }
 directives = {
-  "arm":"0",
-  "code32":"0",
-  "thumb":"1",
-  "thumb":"1"
+  "arm"   : "0",
+  "code32": "0",
+  "thumb" : "1",
+  "thumb" : "1"
 }
 registers = {
   # general registers and program counter
-  "R0":"0000",
-  "R1":"0001",
-  "R2":"0010",
-  "R3":"0011",
-  "R4":"0100",
-  "R5":"0101",
-  "R6":"0110",
-  "R7":"0111",
-  "R8":"1000",
-  "R9":"1001",
-  "R10":"1010",
-  "R11":"1011",
-  "R12":"1100",
+  "R0" : "0000",
+  "R1" : "0001",
+  "R2" : "0010",
+  "R3" : "0011",
+  "R4" : "0100",
+  "R5" : "0101",
+  "R6" : "0110",
+  "R7" : "0111",
+  "R8" : "1000",
+  "R9" : "1001",
+  "R10": "1010",
+  "R11": "1011",
+  "R12": "1100",
   ## stack pointer
-  "R13":"1101",
-  "SP":"1101",
+  "R13": "1101",
+  "SP" : "1101",
   ## link register
-  "R14":"1110",
-  "LR":"1110",
+  "R14": "1110",
+  "LR" : "1110",
   ## program counter
-  "PC":"1111",
-  "R15":"1111",
+  "PC" : "1111",
+  "R15": "1111",
   # program status registers
-  "CPSR":"0",
-  "SPSR":"1"
+  "CPSR": "0",
+  "SPSR": "1"
 }
 shiftname = {
-  "LSL":"00",
-  "ASL":"00",
-  "LSR":"01",
-  "ASR":"10",
-  "ROR":"11",
-  "RRX":"11" #todo
+  "LSL" : "00",
+  "ASL" : "00",
+  "LSR" : "01",
+  "ASR" : "10",
+  "ROR" : "11",
+  "RRX" : "11"
 }
 
-f = open("instruction.s","r")
+f = open("instruction.s", "r")
+out = open("out.txt", "w")
 
 thumb = False  #thumb / arm
 bigendian = False # big endian / litte endian
@@ -134,10 +135,13 @@ class Mnemonic:
   def __init__(self,instr):
     # mnemonic = opcodes[code] + {cond} + {extra}
     for item in opcodes:
+      # add name
       self.name = item
-      if item in instr:
+      # instr found in opcodes
+      if item in instr and instr.index(item) == 0:
         self.code = opcodes[item]
         self.extra = instr[len(item):]
+        # instr has condition 
         if self.extra[:2] in conditions:
           self.cond = conditions[self.extra[:2]]
           self.extra = self.extra[2:]
@@ -151,20 +155,20 @@ class Operands:
     self.value = []
     self.type = []
     self.extra = []
-    for i,item in enumerate(self.name):
+    for i, item in enumerate(self.name):
       shift = False
       # shift
       if item[:3] in shiftname:
         shift = True
       # extra
       self.extra.append("")
-      for j in range(len(item)-1,-1,-1):
-        if item[j] in ["!","^","[","]","+","-"]:
+      for j in range(len(item) - 1, -1, -1):
+        if item[j] in ["!", "^", "[", "]", "+", "-"]:
           self.extra[i] = item[j] + self.extra[i]
-          item = item[:j] + item[j+1:]
+          item = item[:j] + item[j + 1:]
       ## flag
       if "_" in item:
-        self.extra[i] += item[item.index("_")+1:]
+        self.extra[i] += item[item.index("_") + 1:]
         item = item[:item.index("_")]
       self.name[i] = item
       ## immediate value
@@ -175,14 +179,14 @@ class Operands:
             shiftamount = "00000"
           else:
             shiftamount = Immediate(item, 5)
-          self.value.append(shiftamount+shiftname[item[:3]]+"0")
+          self.value.append(shiftamount + shiftname[item[:3]] + "0")
         else:
           self.value.append(Immediate(item, 8, True))
       ## register
       else:
         self.type.append("Reg")
         if shift:
-          self.value.append(registers[item[4:]]+"0"+shiftname[item[:3]]+"1")
+          self.value.append(registers[item[4:]] + "0" + shiftname[item[:3]] + "1")
         else:
           self.value.append(registers[item[0:]])
 
@@ -190,11 +194,11 @@ class Operands:
         self.type[-1] += "Shift"
         
 
-def Immediate(val,size,rotate=False):
-  val = val[val.index("#")+1:]
+def Immediate(val, size, rotate = False):
+  val = val[val.index("#") + 1:]
   # hex
   if len(val) > 2 and val[1] == "X":
-    val = str(int(val[2:],16))
+    val = str(int(val[2:], 16))
   num = bin(int(val))[2:].zfill(size)
   # rotate
   if rotate:
@@ -203,28 +207,28 @@ def Immediate(val,size,rotate=False):
       a = num.index("1")
       b = max(i for i, val in enumerate(num) if val == "1") + 1
       b += 1 if b % 2 != 0 else 0
-      num = str(bin(b//2)[2:]).zfill(4) + num[a:b].zfill(8)
+      num = str(bin(b // 2)[2:]).zfill(4) + num[a:b].zfill(8)
     else:
       num = "0000" + num
   return num
 
 
 def advance(mnemonic,operands):
-  print(mnemonic,operands)
+  print(mnemonic, operands)
   m = Mnemonic(mnemonic)
-  print([m.name,m.code,m.cond,m.extra])
+  print([m.name, m.code, m.cond, m.extra])
   o = Operands(operands)
-  print([o.name,o.value,o.type,o.extra])
+  print([o.name, o.value, o.type, o.extra])
   
   # data processing
   if len(m.code) == 4:
     # MOV, MVN
-    if m.name in ["MOV","MVN"]:
+    if m.name in ["MOV", "MVN"]:
       rn = "0000"
       rd = o.value[0]
       rm = o.value[1]
     # CMP, CMN, TEQ, TST
-    elif m.name in ["CMP","CMN","TEQ","TST"]:
+    elif m.name in ["CMP", "CMN", "TEQ", "TST"]:
       rn = o.value[0]
       rd = "0000"
       rm = o.value[1]
@@ -233,7 +237,6 @@ def advance(mnemonic,operands):
       rn = o.value[1]
       rd = o.value[0]
       rm = o.value[2]
-    #i = "1" if o.type[-1] == "Imm" else "0"
     s = "1" if m.extra == "S" else "0"
     # operand 2 is imm / reg
     if o.type[-1] == "Imm":
@@ -244,15 +247,15 @@ def advance(mnemonic,operands):
       if "Shift" in o.type[-1]:
         operand2 = o.value[-1] + rm
       else:
-        operand2 = "0"*8 + rm
-    result = m.cond+"00"+i+m.code+s+rn+rd+operand2 
+        operand2 = "0" * 8 + rm
+    result = m.cond + "00" + i + m.code + s + rn + rd + operand2 
   # psr transfer
   elif m.code == "0":
     # MRS
     if m.name == "MRS":
       i = "0" # srouce op type
       p = o.value[1] # destination psr
-      result = m.cond+"00"+i+"10"+p+"001111"+"0"*16
+      result = m.cond + "00" + i + "10" + p + "001111" + "0" * 16
     # MSR
     else:
       # source op is imm
@@ -262,40 +265,42 @@ def advance(mnemonic,operands):
       # source op is reg
       else:
         i = "0"
-        sourceoperand = "0"*8+o.value[1]
+        sourceoperand = "0" * 8 + o.value[1]
       n = "0" if o.extra[0] == "FLG" else "1" # 0 if flag present
       p = o.value[0]
-      result = m.cond+"00"+i+"10"+p+"10100"+n+"1111"+sourceoperand
+      result = m.cond + "00" + i + "10" + p + "10100" + n + "1111" + sourceoperand
   # multiply and multiply-accumulate
   elif m.code == "1":
     a = "1" if m.name == "MLA" else "0"
     s = "1" if m.extra == "S" else "0"
     rn = o.value[3] if m.name == "MLA" else "0000"
-    result = m.cond+"000000"+a+s+o.value[0]+rn+o.value[2]+"1001"+o.value[1]
+    result = m.cond + "000000" + a + s + o.value[0] + rn + o.value[2] + "1001" + o.value[1]
   # multiply long and multiply-accumulate long
   elif m.code == "2":
     u = "1" if m.name[0] == "S" else "0"
     a = "1" if m.name[1:] == "MLAL" else "0"
     s = "1" if m.extra == "S" else "0"
-    result = m.cond+"00001"+u+a+s+o.value[1]+o.value[0]+o.value[3]+"1001"+o.value[2]
+    result = m.cond + "00001" + u + a + s + o.value[1] + o.value[0] + o.value[3] + "1001" + o.value[2]
   # single data swap
   elif m.code == "3":
     result = m.code
   # branch and exchange
   elif m.code == "4":
     result = m.code
-  # single data transfer (halfword data transfer)
+  # single data transfer (halfword and signed data transfer)
   elif m.code == "7":
-    # load / store
-    l = "1" if m.name == "LDR" else "0"
+    # 01
+    const = "01"
+    # post / pre index
+    p = "0" if "]" in o.extra[1] else "1"
+    # down / up bit
+    u = "0" if len(o.name) > 2 and "-" in o.extra[2] else "1"
     # byte / word bit
     b = "1" if "B" in m.extra else "0"
     #  no / write back
     w = "1" if "!" in o.extra[-1] else "0"
-    # post / pre index
-    p = "0" if "]" in o.extra[1] else "1"
-    # down / up bit
-    u = "0" if "-" in o.extra[2] else "1"
+    # load / store
+    l = "1" if m.name == "LDR" else "0"
     # registers
     rd = o.value[0]
     rn = o.value[1]
@@ -310,8 +315,25 @@ def advance(mnemonic,operands):
         offset = o.value[-1] + rm
       else:
         rm = o.value[-1] 
-        offset = "0"*8 + rm
-    result = m.cond+"01"+i+p+u+b+w+l+rn+rd+offset
+        offset = "0" * 8 + rm
+
+    # halfword and signed
+    if m.extra in ["H", "SH", "SB"]:
+      const = "00"
+      i = "0"
+      b = "1" if len(o.name) < 3 or "#" in o.name[-1] else "0"
+      p = "1" if len(o.name) < 3 else p
+      # S,H
+      s = "1" if "S" in m.extra else "0"
+      h = "1" if "H" in m.extra else "0"
+      # imm / reg offset
+      if o.type[-1] == "Imm":
+        of1, of2 = o.value[-1][4:8], o.value[-1][8:]
+        offset = of1 + "1" + s + h + "1" + of2
+      else:
+        rm = o.value[-1]
+        offset = "0000"+"1"+s+h+"1"+rm 
+    result = m.cond + const + i + p + u + b + w + l + rn + rd + offset
   # block data transfer
   elif m.code == "9":
     result = m.code
@@ -338,8 +360,10 @@ def advance(mnemonic,operands):
     print(result[i:i+4],end=" ")
   try:
     print("---- %08x" % int(result, 2))
+    out.write("%08x\n" % int(result, 2))
   except:
     print("---- not valid hexa")
+    out.write("x\n"*8)
   print()
 
 if __name__ == "__main__":
@@ -347,6 +371,7 @@ if __name__ == "__main__":
     if "@" in line: # comments
       line = line[:line.index("@")]
     if line.strip() == "" or line[0] in [".","_"]: # comment line or directive
+      out.write("\n")
       continue
     else:
       advance(*line.upper().strip().split(" ",1))
