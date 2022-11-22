@@ -45,3 +45,11 @@ LDMFD SP!, {R15}^
 STMFD R13, {R0-R14}^
 STMED SP!, {R0-R3,R14}
 LDMED SP!,{R0-R3,R15}
+
+@ single data swap
+SWP   R0,R1,[R2]
+SWPB  R2,R3,[R4]
+SWPEQ R0,R0,[R1]
+
+@ software interrupt
+SWINE 0

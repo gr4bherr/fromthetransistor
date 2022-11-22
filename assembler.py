@@ -152,11 +152,7 @@ class Mnemonic:
 
 class Operands:
   def __init__(self,instr):
-    print(instr)
     self.name = [x.strip() for x in instr.split(",")]
-
-
-    print(self.name)
     self.value = []
     self.type = []
     self.extra = []
@@ -198,8 +194,10 @@ class Operands:
           # range of registers
           if "-" in item:
             self.value.append(registers[item[:item.index("-")]] + registers[item[item.index("-")+1:]])
-          else:
+          elif item in registers:
             self.value.append(registers[item[0:]])
+          else:
+            self.value.append(item)
 
       if shift:
         self.type[-1] += "Shift"
@@ -294,7 +292,11 @@ def advance(mnemonic,operands):
     result = m.cond + "00001" + u + a + s + o.value[1] + o.value[0] + o.value[3] + "1001" + o.value[2]
   # single data swap
   elif m.code == "3":
-    result = m.code
+    b = "1" if m.extra == "B" else "0"
+    rn = "0000" if len(o.name) < 3 else o.value[2]
+    rd = o.value[0]
+    rm = o.value[1]
+    result = m.cond + "00010" + b + "00" + rn + rd + "00001001" + rm
   # branch and exchange
   elif m.code == "4":
     result = m.code
@@ -327,7 +329,6 @@ def advance(mnemonic,operands):
       else:
         rm = o.value[-1] 
         offset = "0" * 8 + rm
-
     # halfword and signed
     if m.extra in ["H", "SH", "SB"]:
       const = "00"
@@ -391,7 +392,8 @@ def advance(mnemonic,operands):
     result = m.code
   # software interrupt
   elif m.code == "14":
-    result = m.code
+    # dont konw if the comment field is important 
+    result = m.cond + "1111" + "0"*24
 
 
 
