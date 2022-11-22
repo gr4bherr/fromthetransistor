@@ -157,14 +157,15 @@ class Operands:
       if item[:3] in shiftname:
         shift = True
       # extra
-      if item[-1] in ["!","^"]:
-        self.extra.append(item[-1])
-        item = item[:-1]
-      elif "_" in item:
-        self.extra.append(item[item.index("_")+1:])
+      self.extra.append("")
+      for j in range(len(item)-1,-1,-1):
+        if item[j] in ["!","^","[","]","+","-"]:
+          self.extra[i] = item[j] + self.extra[i]
+          item = item[:j] + item[j+1:]
+      ## flag
+      if "_" in item:
+        self.extra[i] += item[item.index("_")+1:]
         item = item[:item.index("_")]
-      else:
-        self.extra.append("")
       self.name[i] = item
       ## immediate value
       if "#" in item or item[:3] == "RRX":
@@ -285,7 +286,32 @@ def advance(mnemonic,operands):
     result = m.code
   # single data transfer (halfword data transfer)
   elif m.code == "7":
-    result = m.code
+    # load / store
+    l = "1" if m.name == "LDR" else "0"
+    # byte / word bit
+    b = "1" if "B" in m.extra else "0"
+    #  no / write back
+    w = "1" if "!" in o.extra[-1] else "0"
+    # post / pre index
+    p = "0" if "]" in o.extra[1] else "1"
+    # down / up bit
+    u = "0" if "-" in o.extra[2] else "1"
+    # registers
+    rd = o.value[0]
+    rn = o.value[1]
+    # imm / reg offset
+    if o.type[-1] == "Imm":
+      i = "0"
+      offset = o.value[-1]
+    else:
+      i = "1"
+      if "Shift" in o.type[-1]:
+        rm = o.value[-2]
+        offset = o.value[-1] + rm
+      else:
+        rm = o.value[-1] 
+        offset = "0"*8 + rm
+    result = m.cond+"01"+i+p+u+b+w+l+rn+rd+offset
   # block data transfer
   elif m.code == "9":
     result = m.code
