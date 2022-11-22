@@ -130,6 +130,7 @@ bigendian = False # big endian / litte endian
 # set flags
 # registers as class?
 # work in hexa?
+# stuff like operand count etc.
 
 class Mnemonic:
   def __init__(self,instr):
@@ -151,7 +152,11 @@ class Mnemonic:
 
 class Operands:
   def __init__(self,instr):
+    print(instr)
     self.name = [x.strip() for x in instr.split(",")]
+
+
+    print(self.name)
     self.value = []
     self.type = []
     self.extra = []
@@ -163,9 +168,11 @@ class Operands:
       # extra
       self.extra.append("")
       for j in range(len(item) - 1, -1, -1):
-        if item[j] in ["!", "^", "[", "]", "+", "-"]:
-          self.extra[i] = item[j] + self.extra[i]
-          item = item[:j] + item[j + 1:]
+        if item[j] in ["!", "^", "[", "]", "+", "-", "{", "}"]:
+          # only if "-" not representing range
+          if item[j] != "-" or j < 2:
+            self.extra[i] = item[j] + self.extra[i]
+            item = item[:j] + item[j + 1:]
       ## flag
       if "_" in item:
         self.extra[i] += item[item.index("_") + 1:]
@@ -188,7 +195,11 @@ class Operands:
         if shift:
           self.value.append(registers[item[4:]] + "0" + shiftname[item[:3]] + "1")
         else:
-          self.value.append(registers[item[0:]])
+          # range of registers
+          if "-" in item:
+            self.value.append(registers[item[:item.index("-")]] + registers[item[item.index("-")+1:]])
+          else:
+            self.value.append(registers[item[0:]])
 
       if shift:
         self.type[-1] += "Shift"
@@ -336,7 +347,36 @@ def advance(mnemonic,operands):
     result = m.cond + const + i + p + u + b + w + l + rn + rd + offset
   # block data transfer
   elif m.code == "9":
-    result = m.code
+    # do not / load psr
+    s = "1" if "^" in o.extra[-1] else "0"
+    # no / write back
+    w = "1" if "!" in o.extra[0] else "0"
+    # load / store
+    if m.name == "LDM":
+      l = "1"
+      # post / pre index
+      p = "1" if m.extra in ["EA", "ED", "IB", "DB"] else "0" #str [F,B]
+      # down / up bit
+      u = "1" if m.extra in ["ED", "FD", "IB", "IA"] else "0" #str [A,B]
+    else: 
+      l = "0"
+      p = "1" if m.extra in ["FA", "FD", "IB", "DB"] else "0" #str [F,B]
+      u = "1" if m.extra in ["EA", "FA", "IB", "IA"] else "0" #str [A,B]
+    rn = o.value[0]
+    # reglist
+    reglist = ["0"] * 16
+    for i in range(1,len(o.name)):
+      # range
+      if len(o.value[i]) > 4: 
+        x = 15-int(o.value[i][:4], 2)
+        y = 15-int(o.value[i][4:], 2)
+        for j in range(y,x+1):
+          reglist[j] = "1"
+      # one register
+      else:
+        reglist[15-int(o.value[i], 2)] = "1"
+    reglist = "".join(reglist)
+    result = m.cond + "100" + p + u + s + w + l + rn + reglist
   # branch
   elif m.code == "10":
     result = m.code

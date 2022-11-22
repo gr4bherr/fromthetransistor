@@ -36,3 +36,12 @@ LDRH R1, [R2,-R3]!
 STRH R3, [R4,#14]
 LDRSB R8, [R2],#-223
 LDRNESH R11, [R0]
+
+@ block data transfer
+LDMFD SP!, {R0, R1,R2} 
+STMIA R0, {R0-R15} 
+LDMFD SP!, {R15} 
+LDMFD SP!, {R15}^
+STMFD R13, {R0-R14}^
+STMED SP!, {R0-R3,R14}
+LDMED SP!,{R0-R3,R15}
