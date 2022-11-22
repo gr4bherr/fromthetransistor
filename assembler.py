@@ -59,19 +59,11 @@ opcodes = {
   # block data transfer
   "LDM"  : "9",
   "STM"  : "9",
-  # coprocessor data transfer
-  "LDC"  : "11",
-  "STC"  : "11",
-  # coprocessor data operation
-  "CDP"  : "12",
-  # coprocessor register transfer
-  "MRC"  : "13",
-  "MCR"  : "13",
   # software interrupt
   "SWI"  : "14",
   # branch and exchange
   "BX"   : "4",
-  # branch
+  # branch and branch with link
   "BL"   : "10",
   "B"    : "10"
 }
@@ -107,7 +99,24 @@ registers = {
   "R15": "1111",
   # program status registers
   "CPSR": "0",
-  "SPSR": "1"
+  "SPSR": "1",
+  # coprocessor
+  "C0" : "0000",
+  "C1" : "0001",
+  "C2" : "0010",
+  "C3" : "0011",
+  "C4" : "0100",
+  "C5" : "0101",
+  "C6" : "0110",
+  "C7" : "0111",
+  "C8" : "1000",
+  "C9" : "1001",
+  "C10": "1010",
+  "C11": "1011",
+  "C12": "1100",
+  "C13": "1101",
+  "C14": "1110",
+  "C15": "1111"
 }
 shiftname = {
   "LSL" : "00",
@@ -299,7 +308,8 @@ def advance(mnemonic,operands):
     result = m.cond + "00010" + b + "00" + rn + rd + "00001001" + rm
   # branch and exchange
   elif m.code == "4":
-    result = m.code
+    rm = o.value[0]
+    result = m.cond + "000100101111111111110001" + rm
   # single data transfer (halfword and signed data transfer)
   elif m.code == "7":
     # 01
@@ -378,18 +388,11 @@ def advance(mnemonic,operands):
         reglist[15-int(o.value[i], 2)] = "1"
     reglist = "".join(reglist)
     result = m.cond + "100" + p + u + s + w + l + rn + reglist
-  # branch
+  # branch and branch with link
   elif m.code == "10":
-    result = m.code
-  # coprocesssor data transfer
-  elif m.code == "11":
-    result = m.code
-  # coprocessor data operation
-  elif m.code == "12":
-    result = m.code
-  # coprocessor register transfer
-  elif m.code == "13":
-    result = m.code
+    l = "1" if m.name == "BL" else "1"
+    offset = "0"*24 # todo idk man
+    result = m.cond + "101" + l + offset
   # software interrupt
   elif m.code == "14":
     # dont konw if the comment field is important 

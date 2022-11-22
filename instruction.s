@@ -53,3 +53,9 @@ SWPEQ R0,R0,[R1]
 
 @ software interrupt
 SWINE 0
+
+@ branch and exchange
+BX R0
+BXEQ R5
+
+@ branch and branch with link

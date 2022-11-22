@@ -53,3 +53,9 @@ e1442093
 
 @ software interrupt
 1f000000
+
+@ branch and exchange
+e12fff10
+012fff15
+
+@ branch and branch with link
