@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-comp = open("compare.txt","r")
-out = open("out.txt","r")
+comp = open("machinecode.txt","r")
+out = open("assout.txt","r")
 i = 0
 
 for line1 in comp:
@@ -38,4 +38,4 @@ for line1 in comp:
         print("     ",diffb[-1],"->",diffa[-1],y)
     break
 
-print("tests done\n")
+print("tests done")
