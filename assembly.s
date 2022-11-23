@@ -18,8 +18,8 @@ MSR CPSR,R0
 MSR CPSR_flg,#0xF0000000
 
 @ multiply
-MUL         R1,R2,R3
-MLAEQS      R1,R2,R3,R4
+MUL R1,R2,R3
+MLAEQS R1,R2,R3,R4
 
 @ multiply long
 UMULL R1,R4,R2,R3 
@@ -57,5 +57,4 @@ SWINE 0
 @ branch and exchange
 BX R0
 BXEQ R5
-
-@ branch and branch with link
+B R0

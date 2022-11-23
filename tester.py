@@ -6,12 +6,16 @@ i = 0
 
 for line1 in comp:
   i += 1
+  isntr = ""
+  if "@" in line1:
+    instr = line1[line1.index("@"):].strip()
+    line1 = line1[:line1.index("@")]
   line1 = line1.strip()
   for line2 in out:
     line2 = line2.strip()
-    if line1 != line2 and line1[0] != "@":
+    if line1 != line2:
       #print([line1,line2])
-      print("error on line:",i)
+      print(f"{instr} (line: {i})")
       c = ""
       a = []
       b = []

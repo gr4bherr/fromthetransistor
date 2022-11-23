@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from enum import Enum
-from capstone import *
+import re
 
 # assembler for ARM7TDMI
 # no wrong input checking 
@@ -14,70 +13,42 @@ from capstone import *
 f = open("assembly.s", "r")
 out = open("assout.txt", "w")
 
-conditions = {
-  "EQ" : "0000", "NE" : "0001", "CS" : "0010", "CC" : "0011",
-  "MI" : "0100", "PL" : "0101", "VS" : "0110", "VC" : "0111",
-  "HI" : "1000", "LS" : "1001", "GE" : "1010", "LT" : "1011",
-  "GT" : "1100", "LE" : "1101", "AL" : "1110"
-}
-opcodes = {
-  # multiply long
-  "UMULL": "2", "UMLAL": "2", "SMULL": "2", "SMLAL": "2",
-  # data processing
-  ## double operand instructions
-  "AND"  : "0000", "EOR"  : "0001", "SUB"  : "0010", "RSB"  : "0011",
-  "ADD"  : "0100", "ADC"  : "0101", "SBC"  : "0110", "RSC"  : "0111",
-  "ORR"  : "1100", "BIC"  : "1110",
-  ## instructions which do not produce a result (flag setting instructins)
-  "TST"  : "1000", "TEQ"  : "1001", "CMP"  : "1010", "CMN"  : "1011",
-  ## single operand instructions
-  "MOV"  : "1101", "MVN"  : "1111",
-  # psr transfer
-  "MRS"  : "0", "MSR"  : "0",
-  # multiply
-  "MUL"  : "1", "MLA"  : "1",
-  # single data swap
-  "SWP"  : "3",
-  # single data trasfer (halfword data transfer)
-  "LDR"  : "5", "STR"  : "5",
-  # block data transfer
-  "LDM"  : "6", "STM"  : "6",
-  # software interrupt
-  "SWI"  : "8",
-  # branch and exchange
-  "BX"   : "4",
-  # branch and branch with link
-  "BL"   : "7", "B"    : "7"
-}
-registers = {
-  # general registers and program counter
-  "R0" : "0000", "R1" : "0001", "R2" : "0010", "R3" : "0011",
-  "R4" : "0100", "R5" : "0101", "R6" : "0110", "R7" : "0111",
-  "R8" : "1000", "R9" : "1001", "R10": "1010", "R11": "1011",
-  "R12": "1100",
-  ## stack pointer
-  "R13": "1101", "SP" : "1101",
-  ## link register
-  "R14": "1110", "LR" : "1110",
-  ## program counter
-  "PC" : "1111", "R15": "1111",
-  # program status registers
-  "CPSR": "0", "SPSR": "1",
-}
-shiftname = {
-  "LSL" : "00", "ASL" : "00", "LSR" : "01", "ASR" : "10",
-  "ROR" : "11", "RRX" : "11"
-}
+condnames = ["EQ", "NE", "CS", "CC", "MI", "PL", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "AL"]
+conditions = {f"{val}": f"{i:04b}" for i, val in enumerate(condnames)}
+
+mlist  = [
+  "UMULL", "UMLAL", "SMULL", "SMLAL",
+  "LDR", "STR",
+  "MRS", "MSR",
+  "MUL", "MLA",
+  "SWP",
+  "LDM", "STM",
+  "SWI",
+  "AND", "EOR", "SUB", "RSB",
+  "ADD", "ADC", "SBC", "RSC",
+  "TST", "TEQ", "CMP", "CMN",
+  "ORR", "MOV", "BIC", "MVN",
+  "BX",
+  "BL", "B"
+] 
+opcodes = {f"{val}": f"{i:04b}" for i, val in enumerate(mlist[14:30])}
+
+registers = {f"R{i}": f"{i:04b}" for i in range(16)} |\
+            {f"C{i}": f"{i:04b}" for i in range(16)} |\
+            {f"{val}": f"{i:04b}" for i, val in enumerate(["SP", "LR", "PC"], 13)} |\
+            {"CPSR": "0", "SPSR": "1"}
+
+shiftname = {f"{val}": f"{i:02b}" for i, val in enumerate(["LSL", "LSR", "ASR", "ROR"])} |\
+            {"ASL": "00", "RRX": "11"}
 
 class Mnemonic:
   def __init__(self,instr):
-    # mnemonic = opcodes[code] + {cond} + {extra}
-    for item in opcodes:
-      # add name
+    for item in mlist:
       self.name = item
-      # instr found in opcodes
-      if item in instr and instr.index(item) == 0:
-        self.code = opcodes[item]
+      # instr found in mlist
+      if item in instr:
+        print(item)
+        self.code = opcodes[item] if item in opcodes else ""
         self.extra = instr[len(item):]
         # instr has condition 
         if self.extra[:2] in conditions:
@@ -136,7 +107,7 @@ class Operands:
             self.value.append(registers[item[0:]])
           else:
             self.value.append(item)
-
+      # add shift to type
       if shift:
         self.type[-1] += "Shift"
 
@@ -166,7 +137,7 @@ def advance(mnemonic,operands):
   #print([o.name, o.value, o.type, o.extra])
   
   # data processing
-  if len(m.code) == 4:
+  if m.name in opcodes:
     # MOV, MVN
     if m.name in ["MOV", "MVN"]:
       rn = "0000"
@@ -193,14 +164,14 @@ def advance(mnemonic,operands):
         operand2 = o.value[-1] + rm
       else:
         operand2 = "0" * 8 + rm
-    result = f"{m.cond}00{i}{m.code}{s}{rn}{rd}{operand2}"
+    return f"{m.cond}00{i}{m.code}{s}{rn}{rd}{operand2}"
   # psr transfer
-  elif m.code == "0":
+  elif m.name in ["MRS", "MSR"]:
     # MRS
     if m.name == "MRS":
       i = 0 # srouce op type
       p = o.value[1] # destination psr
-      result = f"{m.cond}00{i}10{p}001111{str(0)*16}"
+      return f"{m.cond}00{i}10{p}001111{str(0)*16}"
     # MSR
     else:
       # source op is imm
@@ -213,32 +184,32 @@ def advance(mnemonic,operands):
         sourceoperand = "0" * 8 + o.value[1]
       n = 0 if o.extra[0] == "FLG" else 1 # 0 if flag present
       p = o.value[0]
-      result = f"{m.cond}00{i}10{p}10100{n}1111{sourceoperand}"
+      return f"{m.cond}00{i}10{p}10100{n}1111{sourceoperand}"
   # multiply and multiply-accumulate
-  elif m.code == "1":
+  elif m.name in ["MUL", "MLA"]:
     a = 1 if m.name == "MLA" else 0
     s = 1 if m.extra == "S" else 0
     rn = o.value[3] if m.name == "MLA" else "0000"
-    result = f"{m.cond}000000{a}{s}{o.value[0]}{rn}{o.value[2]}1001{o.value[1]}"
+    return f"{m.cond}000000{a}{s}{o.value[0]}{rn}{o.value[2]}1001{o.value[1]}"
   # multiply long and multiply-accumulate long
-  elif m.code == "2":
+  elif m.name in ["UMULL", "UMLAL", "SMULL", "SMLAL"]:
     u = 1 if m.name[0] == "S" else 0
     a = 1 if m.name[1:] == "MLAL" else 0
     s = 1 if m.extra == "S" else 0
-    result = f"{m.cond}00001{u}{a}{s}{o.value[1]}{o.value[0]}{o.value[3]}1001{o.value[2]}"
+    return f"{m.cond}00001{u}{a}{s}{o.value[1]}{o.value[0]}{o.value[3]}1001{o.value[2]}"
   # single data swap
-  elif m.code == "3":
+  elif m.name == "SWP":
     b = 1 if m.extra == "B" else 0
     rn = "0000" if o.opnum < 3 else o.value[2]
     rd = o.value[0]
     rm = o.value[1]
-    result = f"{m.cond}00010{b}00{rn}{rd}00001001{rm}"
+    return f"{m.cond}00010{b}00{rn}{rd}00001001{rm}"
   # branch and exchange
-  elif m.code == "4":
+  elif m.name == "BX":
     rm = o.value[0]
-    result = f"{m.cond}000100101111111111110001{rm}"
+    return f"{m.cond}000100101111111111110001{rm}"
   # single data transfer (halfword and signed data transfer)
-  elif m.code == "5":
+  elif m.name in ["LDR", "STR"]:
     # 01
     const = "01"
     # post / pre index
@@ -282,9 +253,9 @@ def advance(mnemonic,operands):
       else:
         rm = o.value[-1]
         offset = f"00001{s}{h}1{rm }"
-    result = f"{m.cond}{const}{i}{p}{u}{b}{w}{l}{rn}{rd}{offset}"
+    return f"{m.cond}{const}{i}{p}{u}{b}{w}{l}{rn}{rd}{offset}"
   # block data transfer
-  elif m.code == "6":
+  elif m.name in ["LDM", "STM"]:
     # do not / load psr
     s = 1 if "^" in o.extra[-1] else 0
     # no / write back
@@ -314,34 +285,28 @@ def advance(mnemonic,operands):
       else:
         reglist[15-int(o.value[i], 2)] = "1"
     reglist = "".join(reglist)
-    result = f"{m.cond}100{p}{u}{s}{w}{l}{rn}{reglist}"
+    return f"{m.cond}100{p}{u}{s}{w}{l}{rn}{reglist}"
   # branch and branch with link
-  elif m.code == "7":
+  elif m.name in ["B", "BL"]:
     l = 1 if m.name == "BL" else 1
     offset = "0"*24 # todo idk man
-    result = f"{m.cond}101{l}{offset}"
+    return f"{m.cond}101{l}{offset}"
   # software interrupt
-  elif m.code == "8":
+  elif m.name == "SWI":
     # dont konw if the comment field is important 
-    result = f"{m.cond}1111{str(0)*24}"
-
-  #print("result:",end=" ") 
-  #for i in range(0,len(result),4):
-    #print(result[i:i+4],end=" ")
-  try:
-    #print("---- %08x" % int(result, 2))
-    out.write("%08x\n" % int(result, 2))
-  except:
-    #print("---- not valid hexa")
-    out.write("x\n"*8)
-  #print()
+    return f"{m.cond}1111{str(0)*24}"
 
 if __name__ == "__main__":
   for line in f:
     if "@" in line: # comments
       line = line[:line.index("@")]
-    if line.strip() == "" or line[0] in [".","_"]: # comment line or directive
+    if line.strip() == "" or line[0] in [".", "_"]: # comment line or directive
       out.write("\n")
       continue
     else:
-      advance(*line.upper().strip().split(" ",1))
+      try:
+        #print("%08x\n" % int(advance(*line.upper().strip().split(" ", 1)), 2))
+        out.write("%08x\n" % int(advance(*line.upper().strip().split(" ", 1)), 2))
+      except:
+        #print("---- not valid hexa")
+        out.write("x\n"*8)
