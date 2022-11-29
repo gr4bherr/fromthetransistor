@@ -4,6 +4,7 @@ comp = open("machinecode.txt","r")
 out = open("assout.txt","r")
 i = 0
 
+print("\n---- running tests\n")
 for line1 in comp:
   i += 1
   isntr = ""
@@ -42,4 +43,4 @@ for line1 in comp:
         print("     ",diffb[-1],"->",diffa[-1],y)
     break
 
-print("tests done")
+print("---- tests done\n")
