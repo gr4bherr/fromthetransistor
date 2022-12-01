@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import sys
 import re
+
 
 # assembler for ARM7TDMI
 # no wrong input checking 
@@ -10,7 +12,7 @@ import re
 # registers as class?
 # work in hexa?
 
-f = open("assembly.s", "r")
+f = open(sys.argv[1], "r")
 out = open("assout.txt", "w")
 
 condnames = ["EQ", "NE", "CS", "CC", "MI", "PL", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "AL"]
@@ -74,7 +76,7 @@ class Operands:
     # rotate
     if rotate:
       # number needs rotating
-      if num[-1] != "1":
+      if "1" in num and num[-1] != "1":
         # (a,b) is range of ones
         a = num.index("1")
         b = max(i for i, val in enumerate(num) if val == "1") + 1
@@ -146,15 +148,15 @@ class Operands:
         i += 1
     return "".join(res)
 
-
+# 1110 1111 000000000000000000000000
 
 def advance(mnemonic,operands):
-  print()
-  print(mnemonic, operands)
+  #print()
+  #print(mnemonic, operands)
   m = Mnemonic(mnemonic)
-  print([m.name, m.code, m.cond, m.extra])
+  #print([m.name, m.code, m.cond, m.extra])
   o = Operands(operands)
-  print([o.regs, o.imm, o.shift, o.extra])
+  #print([o.regs, o.imm, o.shift, o.extra])
   
   # BRANCH AND EXCHANGE
   if m.name == "BX":
@@ -278,7 +280,6 @@ if __name__ == "__main__":
     if "@" in line: # comments
       line = line[:line.index("@")]
     if line.strip() == "" or line[0] in [".", "_"]: # comment line or directive
-      out.write("\n")
       continue
     else:
       #try:
