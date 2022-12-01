@@ -88,7 +88,7 @@ class Operands:
   def opnum(self):
     return len(self.regs) + (1 if self.imm else 0)
    
-  def operand2(self,rotate = True, noshiftsize = 12):
+  def operand2(self, rotate = True, noshiftsize = 12):
     # shift
     if self.shift:
       # reg with imm shift
@@ -276,6 +276,7 @@ def advance(mnemonic,operands):
     return f"{m.cond}011{str(0)*20}10000"
 
 if __name__ == "__main__":
+  print("assembling...")
   for line in f:
     if "@" in line: # comments
       line = line[:line.index("@")]
