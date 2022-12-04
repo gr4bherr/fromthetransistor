@@ -75,14 +75,18 @@ class Operands:
     num = f"{int(val):0{size}b}"
     # rotate
     if rotate:
-      # number needs rotating
-      if "1" in num and num[-1] != "1":
-        # (a,b) is range of ones
-        a = num.index("1")
-        b = max(i for i, val in enumerate(num) if val == "1") + 1
-        b += 1 if b % 2 != 0 else 0
-        # num = rotate + num
-        num = f"{b//2:04b}{num[a:b]:0>8}"
+      x = int(val)
+      i = 0
+      while bin(x)[-1] == "0":
+        x = x >> 1
+        i += 1
+      # raise error if (can't be twice the value of rotation) or (isn't an 8-bit immediate value)
+      if i % 2 != 0 or len(bin(x))-2 > 8:
+        print("ERROR: invalid immediate value")
+        quit()
+      rotate = (32-i)//2 if i != 0 else 0
+      # num = rotate + imm
+      num = f"{rotate:04b}{x:08b}"
     return num
 
   def opnum(self):
@@ -151,12 +155,12 @@ class Operands:
 # 1110 1111 000000000000000000000000
 
 def advance(mnemonic,operands):
-  #print()
-  #print(mnemonic, operands)
+  print()
+  print(mnemonic, operands)
   m = Mnemonic(mnemonic)
-  #print([m.name, m.code, m.cond, m.extra])
+  print([m.name, m.code, m.cond, m.extra])
   o = Operands(operands)
-  #print([o.regs, o.imm, o.shift, o.extra])
+  print([o.regs, o.imm, o.shift, o.extra])
   
   # BRANCH AND EXCHANGE
   if m.name == "BX":

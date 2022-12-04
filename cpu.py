@@ -51,7 +51,7 @@ psrset = {
 
 
 regs = {x:0 for x in range(16)} 
-cprs = "0"*32
+cpsr = "0010"+"0"*28
 memsize = 64 # in bytes
 memory = {x:"a"*8 for x in range(0, memsize, 4)}
 
@@ -68,7 +68,7 @@ def regsprint():
     print(f"R{key:<2}: {value:08x}", end="\t")
     if (key+1) % 4 == 0:
       print()
-  print("CPRS:", cprs)
+  print("CPSR:", cpsr)
 
 # load program into memroy (done by os?)
 def load():
@@ -102,7 +102,7 @@ def checktype(b):
   return res
 
 
-def alu(opcode, a, b):
+def alu(opcode, a, b, c):
   # status in and out over cpsr
   # AND
   if opcode == 0:
@@ -145,7 +145,9 @@ def alu(opcode, a, b):
     None
   # MOV
   elif opcode == 13:
-    return int(b, 2)
+    print(a,b,c )
+    regs[a] = c
+    #print(b)
   # BIC
   elif opcode == 14:
     None
@@ -153,46 +155,52 @@ def alu(opcode, a, b):
   elif opcode == 15:
     None
 
-def barrelshifter(n, shiftammount, shift = 4):
-  # todo rrx
+def barrelshifter(n, shiftamount, shift = 4):
+  # todo set carry flag
   width = 32
   # LSL (ASL)
   if shift == 0:
-    return n << shiftammount
+    return n << shiftamount
   # LSR
   elif shift == 1:
-    return n >> shiftammount
+    return n >> shiftamount
   # ASR
   elif shift == 2:
-    num = (f"{n:032b}"[0] * shiftammount) + "0" * (width - shiftammount)
-    return n >> shiftammount | int(num, 2)
-  # ROR
+    num = (f"{n:032b}"[0] * shiftamount) + "0" * (width - shiftamount)
+    return n >> shiftamount | int(num, 2)
+  # ROR, RRX
   elif shift == 3:
-    return (n >> shiftammount | n << (width - shiftammount)) & (2 ** width - 1)
-  # 
-  else:
-    None
-
-#mov r1, #5
-#mov r2, r1, lsl #6
-#mov r3, r1, lsr #6
-#mov r4, r1, asr #6
-#mov r5, r1, ror #6
-#mov r6, r1, rrx
-#1110 0011 1010 0000 0001 0000 0000 0101
-#1110 0001 1010 0000 0010 0011 0000 0001
-#1110 0001 1010 0000 0011 0011 0010 0001
-#1110 0001 1010 0000 0100 0011 0100 0001
-#1110 0001 1010 0000 0101 0011 0110 0001
-#1110 0001 1010 0000 0110 0000 0110 0001
+    # rrx
+    if shiftamount == 0:
+      carry = int(cpsr[2])
+      shiftamount = 1
+      return n >> shiftamount | carry << (width - 1)
+    # ror
+    else:
+      return (n >> shiftamount | n << (width - shiftamount)) & (2 ** width - 1)
 
 def operand2(val, i):
   # register
-  if i == 0:
-    None #todo
+  if i == "0":
+    shifttype = int(val[5:7], 2)
+    # shift by imm
+    if val[7] == "0":
+      shiftam = int(val[:5], 2)
+    # shift by reg
+    else:
+      shiftam = regs[int(val[:4], 2)]
+    rm = regs[int(val[8:], 2)]
+    res = barrelshifter(rm, shiftam, shifttype)
+    return res
   # immediate value
   else:
-    None
+    rotate = int(val[:4], 2) * 2
+    imm = int(val[4:], 2)
+    if rotate == 0:
+      return imm
+    else:
+      return barrelshifter(imm, rotate, 3)
+
 
 
 
@@ -204,9 +212,10 @@ def advance():
 
   # FETCH
   instr = f"{bin(int(memory[regs[15]], 16))[2:]:>032}"
-  print(instr)
+  regs[15] += 4 # pc + 4
   #memoryprint()
   regsprint()
+  print("\nINSTRUCION:", instr)
 
   # DECODE
   cond = instr[0:4]
@@ -223,13 +232,12 @@ def advance():
       print("psr")
     # data processing
     else:
-      #111000111010 0000 0111 0000 0000 0001
       rd = int(instr[16:20], 2)
       rn = int(instr[12:16], 2)
-      op2 = instr[20:32] # rm
       i = instr[6]
-      print(rd, rn, op2, i)
-      regs[rd] = alu(opcode, rn, op2)
+      op2 = operand2(instr[20:32], i) # rm
+      #print(opcode, rd, rn, op2, i)
+      alu(opcode, rd, rn, op2)
 
    
 
@@ -241,8 +249,6 @@ def advance():
     #pc = 8 # todo
     print("SWI *********")
     exit()
-  regs[15] += 4 # pc + 4
-
 
 
 if __name__ == "__main__":
@@ -250,7 +256,6 @@ if __name__ == "__main__":
   memoryprint()
   print("\n"*4)
   while True:
-    print()
     advance()
 
 
