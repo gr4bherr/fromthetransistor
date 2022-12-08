@@ -40,7 +40,7 @@ shiftname = {f"{val}": f"{i:02b}" for i, val in enumerate(["LSL", "LSR", "ASR", 
             {"ASL": "00", "RRX": "XX"}
 
 class Mnemonic:
-  def __init__(self,instr):
+  def __init__(self, instr):
     for item in mlist:
       self.name = item
       # instr found in mlist
@@ -56,7 +56,7 @@ class Mnemonic:
         break
 
 class Operands:
-  def __init__(self,instr):
+  def __init__(self, instr):
     self.regs = [registers[it] for it in re.findall("[R|C][0-9]+|SP|LR|PC|CPSR|SPSR", instr)]
     self.imm = re.findall("#[+|-]?[0-9]x?[A-Z0-9]*", instr)
     self.imm = self.imm[0] if self.imm else None
@@ -77,11 +77,11 @@ class Operands:
     if rotate:
       x = int(val)
       i = 0
-      while bin(x)[-1] == "0":
+      while bin(x)[-1] == "0" and len(bin(x)) - 2 > 2:
         x = x >> 1
         i += 1
       # raise error if (can't be twice the value of rotation) or (isn't an 8-bit immediate value)
-      if i % 2 != 0 or len(bin(x))-2 > 8:
+      if len(bin(x))-2 > 8:
         print("ERROR: invalid immediate value")
         quit()
       rotate = (32-i)//2 if i != 0 else 0
@@ -172,6 +172,7 @@ def advance(mnemonic,operands):
     return f"{m.cond}101{l}{offset}"
   # DATA PROCESSING
   elif m.name in opcodes:
+    s = 1 if m.extra == "S" else 0
     # MOV, MVN
     if m.name in ["MOV", "MVN"]:
       rn = "0000"
@@ -180,11 +181,11 @@ def advance(mnemonic,operands):
     elif m.name in ["CMP", "CMN", "TEQ", "TST"]:
       rn = o.regs[0]
       rd = "0000"
+      s = 1
     # AND,EOR, SUB, RSB, ADD,ADC, SBC, RSC, ORR, BIC
     else:
       rn = o.regs[1]
       rd = o.regs[0]
-    s = 1 if m.extra == "S" else 0
     # operand 2 is imm / reg
     i = 1 if o.imm and not o.shift else 0
     return f"{m.cond}00{i}{m.code}{s}{rn}{rd}{o.operand2()}"
@@ -290,6 +291,7 @@ if __name__ == "__main__":
       #try:
         #print("%08x\n" % int(advance(*line.upper().strip().split(" ", 1)), 2))
       out.write("%08x\n" % int(advance(*line.upper().strip().split(" ", 1)), 2))
+      #print("%08x\n" % int(advance(*line.upper().strip().split(" ", 1)), 2))
       #except:
         #print("---- not valid hexa")
         #out.write("x"*8+"\n")

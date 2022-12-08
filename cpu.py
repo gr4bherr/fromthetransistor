@@ -1,268 +1,315 @@
 #!/usr/bin/env python3
+import re
+import time
 
-# disassembler for ARM7TDMI
+infile = open("assout.txt", "r")
+outfile = open("disassout.txt", "r")
 
-#fl = open("machinecode.txt","r")
-fl = open("assout.txt","r")
-out = open("disassout.txt","w")
-"""
-conditions = {
-  "0000": "EQ", "0001": "NE", "0010": "CS", "0011": "CC", 
-  "0100": "MI", "0101": "PL", "0110": "VS", "0111": "VC", 
-  "1000": "HI", "1001": "LS", "1010": "GE", "1011": "LT", 
-  "1100": "GT", "1101": "LE", "1110": "AL" 
-}
-"""
+class Regs:
+  def __init__(self):
+    self.regs = {x:0 for x in range(17)}
 
-mlist  = [
-  "UMULL", "UMLAL", "SMULL", "SMLAL",
-  "LDR", "STR", "LDM", "STM",
-  "MRS", "MSR", "MUL", "MLA",
-  "SWP", "SWI",
-  "AND", "EOR", "SUB", "RSB",
-  "match", "ADC", "SBC", "RSC",
-  "TST", "TEQ", "CMP", "CMN",
-  "ORR", "MOV", "BIC", "MVN",
-  "BX", "BL", "B"
-] 
+  # select: number of register
+  # load: if changing value of reg
+  # data in: data for the register
 
-instructionset = {
-  1 : "xxxx00xxxxxxxxxxxxxxxxxxxxxxxxxx", # data processing / psr transfer
-  2 : "xxxx000000xxxxxxxxxxxxxx1001xxxx", # multiply
-  3 : "xxxx00001xxxxxxxxxxxxxxx1001xxxx", # multiply long
-  4 : "xxxx00010x00xxxxxxxx00001001xxxx", # single data swap
-  5 : "xxxx000100101111111111110001xxxx", # branch and exchange
-  6 : "xxxx000xx0xxxxxxxxxx00001xx1xxxx", # halfword data transfer: register offset
-  7 : "xxxx000xx1xxxxxxxxxxxxxx1xx1xxxx", # halfword data transfer: immediate offset
-  8 : "xxxx01xxxxxxxxxxxxxxxxxxxxxxxxxx", # single data transfer
-  9 : "xxxx011xxxxxxxxxxxxxxxxxxxx1xxxx", # undefinded
-  10: "xxxx100xxxxxxxxxxxxxxxxxxxxxxxxx", # block data transfer
-  11: "xxxx101xxxxxxxxxxxxxxxxxxxxxxxxx", # branch
-  12: "xxxx110xxxxxxxxxxxxxxxxxxxxxxxxx", # coprocessor data trasnfer
-  13: "xxxx1110xxxxxxxxxxxxxxxxxxx0xxxx", # coprocessor data operation
-  14: "xxxx1110xxxxxxxxxxxxxxxxxxx1xxxx", # coprocessor register transfer
-  15: "xxxx1111xxxxxxxxxxxxxxxxxxxxxxxx"  # software interrupt
-}
-psrset = {
-  1: "xxxx00010x001111xxxx000000000000",
-  2: "xxxx00010x101001111100000000xxxx",
-  3: "xxxx00x10x1010001111000000000000"
-}
+  # read is independent of the clock
+  
 
+# INIT
+r = Regs()
+print("\n**** ARM7TDMI ****\n")
+memsize = 256 # in bytes
+mem = {x:"0" * 8 for x in range(0, memsize, 4)}
+PC = 15
+CPSR = 16
 
-regs = {x:0 for x in range(16)} 
-cpsr = "0010"+"0"*28
-memsize = 64 # in bytes
-memory = {x:"a"*8 for x in range(0, memsize, 4)}
+# not a valid clock of course (wait on instructions to be done)
+def clk():
+  time.sleep(0.1) # 10 Hz
+  return True
 
-# some printing functions
-def memoryprint():
-  print("memory","-"*54)
-  for key, value in memory.items():
-    print(f"M{key:<2}: {value}", end="\t")
+# load instructions into memory
+def load():
+  for i, line in enumerate(infile):
+    mem[i*4] = line.strip()
+
+# print memory content
+def memprint():
+  print("memory", "-" * 54)
+  for key, val in mem.items():
+    print(f"M{key:<2}: {val}", end="\t")
     if (key+4) % 16 == 0:
       print()
-def regsprint():
+  regprint()
+# print register bank content
+def regprint():
   print("registers","-"*51)
-  for key, value in regs.items():
-    print(f"R{key:<2}: {value:08x}", end="\t")
+  for key, val in r.regs.items():
+    if key == 16:
+      print(f"CPSR {val:08x}")
+    else:
+      print(f"R{key:<2}: {val:08x}", end="\t")
     if (key+1) % 4 == 0:
       print()
-  print("CPSR:", cpsr)
-
-# load program into memroy (done by os?)
-def load():
-  for i,line in enumerate(fl):
-    memory[i*4] = line.strip()
-
-# finds best match from instruction set
-def ismatch(pattern, b):
-  score = 0
-  match = True
-  # cycle through characters of pattern
-  for i in range(len(pattern)):
-    if pattern[i] == b[i]:
-      score += 1
-    elif pattern[i] != "x":
-      match = False
-      break
-  return match, score
-
-# determines current instruction type
-def checktype(b):
-  # finds best match in instruction set
-  maxscore = 0
-  # cycle through instrucitonset
-  for name, pattern in instructionset.items():
-    match, score = ismatch(pattern, b)
-    #fuck = ismatch(pattern, b)
-    if match and score > maxscore:
-      res = name
-      maxscore = score
-  return res
 
 
-def alu(opcode, a, b, c):
-  # status in and out over cpsr
-  # AND
-  if opcode == 0:
-    None
-  # EOR
-  elif opcode == 1:
-    None
-  # SUB
-  elif opcode == 2:
-    None
-  # RSB
-  elif opcode == 3:
-    None
-  # ADD
-  elif opcode == 4:
-    None
-  # ADC
-  elif opcode == 5:
-    None
-  # SBC
-  elif opcode == 6:
-    None
-  # RSC
-  elif opcode == 7:
-    None
-  # TST
-  elif opcode == 8:
-    None
-  # TEQ
-  elif opcode == 9:
-    None
-  # CMP
-  elif opcode == 10:
-    None
-  # CMN
-  elif opcode == 11:
-    None
-  # ORR
-  elif opcode == 12:
-    None
-  # MOV
-  elif opcode == 13:
-    print(a,b,c )
-    regs[a] = c
-    #print(b)
-  # BIC
-  elif opcode == 14:
-    None
-  #MVN
-  elif opcode == 15:
-    None
+def test():
+  ins = "10110"
+  m = "10..0"
+  if re.match(m, ins) and not re.match(m, "11110"):
+    print('2')
 
-def barrelshifter(n, shiftamount, shift = 4):
-  # todo set carry flag
-  width = 32
-  # LSL (ASL)
-  if shift == 0:
-    return n << shiftamount
-  # LSR
-  elif shift == 1:
-    return n >> shiftamount
-  # ASR
-  elif shift == 2:
-    num = (f"{n:032b}"[0] * shiftamount) + "0" * (width - shiftamount)
-    return n >> shiftamount | int(num, 2)
-  # ROR, RRX
-  elif shift == 3:
-    # rrx
-    if shiftamount == 0:
-      carry = int(cpsr[2])
-      shiftamount = 1
-      return n >> shiftamount | carry << (width - 1)
-    # ror
-    else:
-      return (n >> shiftamount | n << (width - shiftamount)) & (2 ** width - 1)
-
-def operand2(val, i):
-  # register
-  if i == "0":
-    shifttype = int(val[5:7], 2)
-    # shift by imm
-    if val[7] == "0":
-      shiftam = int(val[:5], 2)
-    # shift by reg
-    else:
-      shiftam = regs[int(val[:4], 2)]
-    rm = regs[int(val[8:], 2)]
-    res = barrelshifter(rm, shiftam, shifttype)
-    return res
-  # immediate value
-  else:
-    rotate = int(val[:4], 2) * 2
-    imm = int(val[4:], 2)
-    if rotate == 0:
-      return imm
-    else:
-      return barrelshifter(imm, rotate, 3)
-
-
-
-
-
-
-
-# main program
 def advance():
+  # todo: not sure if this is right
+  if int(mem[r.regs[15]], 16) == 0:
+    quit()
 
-  # FETCH
-  instr = f"{bin(int(memory[regs[15]], 16))[2:]:>032}"
-  regs[15] += 4 # pc + 4
-  #memoryprint()
-  regsprint()
-  print("\nINSTRUCION:", instr)
+  # **** FETCH ****
+  ins = f"{bin(int(mem[r.regs[15]], 16))[2:]:>032}"
+  print(f"\n{ins}")
+  #regprint()
 
-  # DECODE
-  cond = instr[0:4]
-  instype = checktype(instr)
-  #print(instype)
-  opcode = int(instr[7:11], 2)
-  #print(opcode)
+  # **** DECODE ****  (control unit)
+  cond = int(ins[0:4], 2)
+  #test()
+
+  # if condition valid
+  if cond != 0xf:
+    # dp and miscellaneous
+    if ins[4:6] == "00":
+      print("db and miscellaneous")
+      if ins[6] == "0":
+        if not re.match("10..0", ins[7:12]):
+          # dp reg
+          if re.match("...0", ins[24:28]):
+            print("DP reg")
+            if re.match("1101.", ins[7:12]):
+              if ins[25:27] == "00":
+                if ins[20:25] == "00000":
+                  print("mov")
+                else:
+                  print("lsl (imm)")
+              elif ins[25:27] == "01":
+                print("lsr (imm)")
+              elif ins[25:27] == "10":
+                print("asr (imm")
+              elif ins[25:27] == "11":
+                if ins[20:25] == "00000":
+                  print("rrx")
+                else:
+                  print("ror (imm)")
+            else:
+              print("opcodex dp (reg)")
+          # dp reg-shift reg
+          elif re.match("0..1", ins[24:28]):
+            print("DP reg-shift reg")
+            if re.match("1101.", ins[7:12]):
+              if ins[25:27] == "00":
+                print("lsl (reg)")
+              elif ins[25:27] == "01":
+                print("lsr (reg)")
+              elif ins[25:27] == "10":
+                print("asr (reg)")
+              elif ins[25:27] == "11":
+                print("ror (reg)")
+            else:
+              print("opcodex dp (reg-shifted reg)")
+        elif re.match("10..0", ins[7:12]):
+          # miscellaneous
+          if re.match("0...", ins[24:28]):
+            print("miscellanious")
+            if ins[25:28] == "000":
+              if ins[9:11] == "00":
+                print("mrs rd, cpsr")
+              elif ins[9:11] == "10":
+                print("mrs rd, spsr")
+              elif ins[9:11] == "01":
+                print("msr cpsr, rm")
+              elif ins[9:11] == "11":
+                print("msr spsr, rm")
+            elif ins[25:28] == "001":
+              if ins[9:11] == "01":
+                print("bx")
+        elif re.match("0....", ins[7:12]):
+          # multiply (and accum)
+          if ins[24:28] == "1001":
+            print("multiply (multiply and accumulate")
+            if re.match("000.", ins[8,12]):
+              print("mul")
+            elif re.match("001.", ins[8,12]):
+              print("mla")
+            elif re.match("100.", ins[8,12]):
+              print("umull")
+            elif re.match("101.", ins[8,12]):
+              print("umlal")
+            elif re.match("110.", ins[8,12]):
+              print("smull")
+            elif re.match("111.", ins[8,12]):
+              print("smlal")
+        # half word data transfer 1/2
+        elif not re.match("0..1.", ins[7:12]):
+          if ins[24:28] == "1011":
+            if re.match("..0.0", ins[7:12]):
+              print("strh (reg)")
+            elif re.match("..0.1", ins[7:12]):
+              print("ldrh (reg)")
+            elif re.match("..1.0", ins[7:12]):
+              print("strh (imm)")
+            elif re.match("..1.1", ins[7:12]):
+              if ins[11:15] != "1111":
+                print("ldrh (imm)")
+              else:
+                print("ldrh (literal)")
+          elif ins[24:28] == "1011":
+            if re.match("..0.1", ins[7:12]):
+              print("ldrsb (reg)")
+            elif re.match("..1.1", ins[7:12]):
+              if ins[12:16] != "1111":
+                print("ldrsb (imm)")
+              else:
+                print("ldrsb (literal)")
+          elif ins[24:28] == "1111":
+            if re.match("..0.1", ins[7:12]):
+              print("ldrsh (reg)")
+            elif re.match("..1.1", ins[7:12]):
+              if ins[11:15] != "1111":
+                print("ldrsh (imm)")
+              else:
+                print("ldrsh (literal)")
+        # half word data transfer 2/2
+        elif re.match("0..10", ins[7:12]):
+          if ins[24:28] == "1011":
+            if re.match("..0.1", ins[7:12]):
+              print("ldrsb (reg)")
+            elif re.match("..1.1", ins[7:12]):
+              if ins[11:15] != "1111":
+                print("ldrsb (imm)")
+              else:
+                print("ldrsb (literal)")
+          elif ins[24:28] == "1111":
+            if re.match("..0.1", ins[7:12]):
+              print("ldrsh (reg)")
+            elif re.match("..1.1", ins[7:12]):
+              if ins[11:15] != "1111":
+                print("ldrsh (imm)")
+              else:
+                print("ldrsh (literal)")
+      elif ins[6] == "1":
+        if not re.match("10..0", ins[7:12]):
+          print("dp (imm)")
+        elif re.match("10.10", ins[7:12]):
+          print("msr (imm)")
+    # single data transfer
+    elif ins[4:6] == "01":
+      if ins[6] == "0":
+        if re.match("..0.0", ins[7:12]) and not re.match("0.010", ins[7:12]):
+          print("str (imm)")
+        elif re.match("0.010", ins[7:12]):
+          print("strt")
+        elif re.match("..0.1", ins[7:12]) and not re.match("0.011", ins[7:12]):
+          if ins[11:15] != "1111":
+            print("ldr (imm)")
+          else:
+            print("ldr (literal)")
+        elif re.match("0.011", ins[7:12]):
+          print("ldrt")
+        elif re.match("..1.0", ins[7:12]) and not re.match("0.110", ins[7:12]):
+          print("strb (imm)")
+        elif re.match("0.110", ins[7:12]):
+          print("strbt")
+        elif re.match("..1.1", ins[7:12]) and not re.match("0.111", ins[7:12]):
+          if ins[11:15] != "1111":
+            print("ldrb (imm)")
+          else:
+            print("ldrb (literal)")
+        elif re.match("0.111", ins[7:12]):
+          print("ldrbt")
+      elif ins[6] == "1":
+        if re.match("..0.0", ins[7:12]) and not re.match("0.010", ins[7:12]):
+          print("str (reg)")
+        elif re.match("0.010", ins[7:12]):
+          print("strt")
+        elif re.match("..0.1", ins[7:12]) and not re.match("0.011", ins[7:12]):
+            print("ldr (reg)")
+        elif re.match("0.011", ins[7:12]):
+          print("ldrt")
+        elif re.match("..1.0", ins[7:12]) and not re.match("0.110", ins[7:12]):
+          print("strb (reg)")
+        elif re.match("0.110", ins[7:12]):
+          print("strbt")
+        elif re.match("..1.1", ins[7:12]) and not re.match("0.111", ins[7:12]):
+            print("ldrb (reg)")
+        elif re.match("0.111", ins[7:12]):
+          print("ldrbt")
+    # branch (with link), block data transfer
+    elif ins[4:6] == "10":
+      if re.match("0000.0", ins[6:12]):
+        print("stmda (stmed)")
+      elif re.match("0000.1", ins[6:12]):
+        print("ldmda/ldmfa")
+      elif re.match("0010.0", ins[6:12]):
+        print("stm (stmia,stmea)")
+      elif re.match("0010.1", ins[6:12]):
+        print("ldm/ldmia/ldmfd")
+      elif re.match("0100.0", ins[6:12]):
+        print("stmdb (stmfd)")
+      elif re.match("0100.1", ins[6:12]):
+        print("ldmdb/ldmea")
+      elif re.match("0110.0", ins[6:12]):
+        print("stmib (stmfa)")
+      elif re.match("0110.1", ins[6:12]):
+        print("ldmib/ldmed")
+      elif re.match("0..1.0", ins[6:12]):
+        print("stm")
+      elif re.match("0..1.1", ins[6:12]):
+        print("ldm")
+      elif re.match("10....", ins[6:12]):
+        print("b")
+      elif re.match("11....", ins[6:12]):
+        print("bl")
+    # coprocessor, supervisor call
+    elif ins[4:6] == "11":
+      if re.match("00000.", ins[6:12]):
+        print("undefined")
+      elif re.match("110000", ins[6:12]):
+        print("swi")
+      elif re.match("0....0", ins[6:12]) and not re.match("000.00", ins[6:12]):
+        print("stc")
+      elif re.match("0....1", ins[6:12]) and not re.match("000.01", ins[6:12]):
+        if ins[11:15] == "1111":
+          print("ldc (imm")
+        else:
+          print("ldc (literal")
+      elif re.match("10....", ins[6:12]) and ins[27] == "0":
+        print("cdp")
+      elif re.match("10...0", ins[6:12]) and ins[27] == "1":
+        print("mcr")
+      elif re.match("10...1", ins[6:12]) and ins[27] == "1":
+        print("mrc")
 
 
-  # EXECUTE
-  if instype == 1:
-    # psr transfer
-    if ismatch(psrset[1], instr)[0] or ismatch(psrset[2], instr)[0] or ismatch(psrset[3], instr)[0]:
-      print("psr")
-    # data processing
-    else:
-      rd = int(instr[16:20], 2)
-      rn = int(instr[12:16], 2)
-      i = instr[6]
-      op2 = operand2(instr[20:32], i) # rm
-      #print(opcode, rd, rn, op2, i)
-      alu(opcode, rd, rn, op2)
 
-   
+      
 
 
 
 
-  # SWI
-  if instype == 15:
-    #pc = 8 # todo
-    print("SWI *********")
-    exit()
+  # **** EXECUTE **** (alu)
+
+
+
+
+
+
+
+  r.regs[PC] += 4
+
 
 
 if __name__ == "__main__":
   load()
-  memoryprint()
-  print("\n"*4)
-  while True:
+  memprint()
+  # run
+  while clk():
     advance()
-
-
-# MRS R0,CPSR
-# xxxxxxxxxxxx
-# 1110 0001 0000 1111 0000 0000 0000 0000
-# cond 00x1 0x00 _rn_ _rd_ 0000 0000 0000
-
-# MSR CPSR,R0
-# 1110 0001 0010 1001 1111 0000 0000 0000
