@@ -57,4 +57,3 @@ SWINE 0
 @ branch and exchange
 BX R0
 BXEQ R5
-B R0
