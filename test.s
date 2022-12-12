@@ -1,5 +1,5 @@
-mov r0, #0x3
-mov r1, #0x5
+mov r0, #0x70000000
+movs r1, #0x70000000
 ands r2,r0,r1
 eors r3,r0,r1
 subs r4,r0,r1

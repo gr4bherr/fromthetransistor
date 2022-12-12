@@ -14,6 +14,7 @@ def memprint():
     if (key+4) % 16 == 0:
       print()
   regprint()
+  print("**** START ****")
 # print register bank content
 def regprint():
   print("registers","-"*51)
@@ -28,7 +29,7 @@ def regprint():
 # **** INIT ****
 print("\n**** ARM7TDMI ****\n")
 regs = {x:0 for x in range(17)}
-memsize = 256 # in bytes
+memsize = 32 # in bytes
 mem = {x:"0" * 8 for x in range(0, memsize, 4)}
 PC = 15
 CPSR = 16
@@ -40,18 +41,17 @@ def clk():
 def load():
   for i, line in enumerate(infile):
     mem[i*4] = line.strip()
-
+  
 # if val negative -> two's complement
-def twoscomp(val, bits = 32):
+def totwoscomp(val, bits = 32):
+  # if val negative
   if (val & (1 << (bits-1))) != 0:
     val = val - (1 << bits)
+  # sign extend
   return val & ((2 ** bits) - 1)
 
-
 # **** COMPONENTS **** 
-def alu(opcode, dest, op1, op2):
-  # todo: flags
-  print("alu:", opcode, dest, op1, op2)
+def alu(opcode, s, dest, op1, op2):
   # AND
   if opcode == 0:
     res = op1 & op2
@@ -69,13 +69,13 @@ def alu(opcode, dest, op1, op2):
     res = op1 + op2
   # ADC
   elif opcode == 5:
-    res = op1 + op2# + r.getflag(2)
+    res = op1 + op2 + int(f"{regs[CPSR]:032b}"[2])
   # SBC
   elif opcode == 6:
-    res = op1 - op2# + r.getflag(2) - 1
+    res = op1 - op2 + int(f"{regs[CPSR]:032b}"[2])
   # RSC
   elif opcode == 7:
-    res = op2 - op1# + r.getflag(2) - 1
+    res = op2 - op1 + int(f"{regs[CPSR]:032b}"[2])
   # TST
   elif opcode == 8:
     res = op1 & op2
@@ -100,36 +100,103 @@ def alu(opcode, dest, op1, op2):
   #MVN
   elif opcode == 15:
     res = ~op2
-  
-  print("alu res:", twoscomp(res))
+  # format
+  res = totwoscomp(res)
+  bop1 = f"{op1:032b}"
+  bop2 = f"{op1:032b}"
+  bres = f"{res:032b}"
+  # write to reg
   if opcode not in [5, 6, 7, 8]:
-    regs[dest] = twoscomp(res)
-
+    regs[dest] = res
+  # set flags
+  if s == 1 and dest != 15:
+    # N
+    if bres[0] == "1":
+      regs[CPSR] = regs[CPSR] | 0x80000000
+    else:
+      regs[CPSR] = regs[CPSR] & 0x7fffffff
+    # Z
+    if res == 0:
+      regs[CPSR] = regs[CPSR] | 0x40000000
+    else:
+      regs[CPSR] = regs[CPSR] & 0xbfffffff
+    # C
+    # sub
+    if opcode in [2, 3 ,6, 7, 10]:
+      if op1 < op2:
+        regs[CPSR] = regs[CPSR] & 0xdfffffff
+      else:
+        regs[CPSR] = regs[CPSR] | 0x20000000
+    # add
+    if opcode in [4, 5, 11]:
+      if bop1[0] == "1" and bop2[0] == "1": # unsigned overflow
+        regs[CPSR] = regs[CPSR] | 0x20000000
+      else:
+        regs[CPSR] = regs[CPSR] & 0xdfffffff
+    # V
+    if opcode in [2,3,4,5,6,7,10]:
+      if bop1[0] == "0" and bop2[0] == "0" and bres[0] == "1": # signed overflow
+        regs[CPSR] = regs[CPSR] | 0x10000000
+      else:
+        regs[CPSR] = regs[CPSR] & 0xefffffff
+    
 # rotate: False -> shift, rotate: True -> rotate (no rrx)
-def barrelshifter(n, shiftam, shift, rotate = False):
-  # todo set carry flag
+def barrelshifter(n, shiftam, shift, carry, rotate = False):
   width = 32
   # LSL (ASL)
   if shift == 0:
-    return n << shiftam
+    if shiftam == 32:
+      carry = bin(n)[-1]
+      res = 0
+    elif shiftam > 32:
+      carry = 0
+      res = 0
+    else:
+      tmp = bin(n << shiftam)
+      carry = int(tmp[-33]) if len(tmp) - 2 > 32 else 0
+      res = n << shiftam & 0xffffffff
   # LSR
   elif shift == 1:
-    return n >> shiftam
+    if shiftam == 32:
+      carry = bin(n)[2]
+      res = 0
+    elif shiftam > 32:
+      carry = 0
+      res = 0
+    else:
+      carry = int(f"{n:032b}"[-shiftam])
+      res = n >> shiftam
   # ASR
   elif shift == 2:
-    num = (f"{n:032b}"[0] * shiftam) + "0" * (width - shiftam)
-    return n >> shiftam | int(num, 2)
+    if shiftam >= 32:
+      carry = bin(n[2])
+      res = n
+    else:
+      carry = int(f"{n:032b}"[-shiftam])
+      num = (f"{n:032b}"[0] * shiftam) + "0" * (width - shiftam)
+      res = n >> shiftam | int(num, 2)
   # ROR, RRX
   elif shift == 3:
+    carry = int(f"{n:032b}"[-shiftam])
     # rrx
     if shiftam == 0 and not rotate:
-      carry = 0 # int(cpsr[2])
       shiftam = 1
-      return n >> shiftam | carry << (width - 1)
+      res = n >> shiftam | int(f"{regs[CPSR]:032b}"[2]) << (width - 1)
     # ror
     else:
-      return (n >> shiftam | n << (width - shiftam)) & (2 ** width - 1)
-
+      if shiftam == 32:
+        carry = bin(n[2])
+        res = n
+      else:
+        shiftam = shiftam % 32
+        res = (n >> shiftam | n << (width - shiftam)) & (2 ** width - 1)
+  # don't set flags when doing op2
+  if rotate: 
+    if carry == 1:
+      regs[CPSR] = regs[CPSR] & 0x20000000
+    else:
+      regs[CPSR] = regs[CPSR] ^ 0x20000000
+  return res
 
 def advance():
   # todo: not sure if this is right
@@ -225,7 +292,7 @@ def advance():
           s = int(ins[11], 2) # set condition code
           rn = regs[int(ins[12:16], 2)]
           rd = int(ins[16:20], 2)
-          rotate = int(ins[20:24], 2)
+          rotate = int(ins[20:24], 2) * 2
           imm = int(ins[24:], 2)
         # PSR TRANSFER: msr imm
         elif re.match("10.10", ins[7:12]):
@@ -299,17 +366,17 @@ def advance():
       #   print("mrc")
       #   insnum = 0xe
 
-  # **** EXECUTE **** (alu)
+  # **** EXECUTE ****
   # data processing
   if insnum == 0x0:
     print(hex(insnum))
     if i == 0:
       op2 = barrelshifter(rm, shiftam, shift, True)
-      print("op2:", op2)
+      #print("op2:", op2)
     else:
       op2 = barrelshifter(imm, rotate, 3, True)
-      print("op2:", op2)
-    alu(opcode, rd, rn, op2)
+      #print("op2:", op2)
+    alu(opcode, s, rd, rn, op2)
   # psr transfer
   elif insnum == 0x1:
     print(hex(insnum))

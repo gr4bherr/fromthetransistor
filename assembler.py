@@ -80,6 +80,10 @@ class Operands:
       while bin(x)[-1] == "0" and len(bin(x)) - 2 > 2:
         x = x >> 1
         i += 1
+      # overshot
+      if i % 2 != 0:
+        x = x << 1
+        i -= 1
       # raise error if (can't be twice the value of rotation) or (isn't an 8-bit immediate value)
       if len(bin(x))-2 > 8:
         print("ERROR: invalid immediate value")
