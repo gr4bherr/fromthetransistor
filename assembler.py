@@ -285,8 +285,9 @@ def advance(mnemonic,operands):
     return f"{m.cond}011{str(0)*20}10000"
 
 if __name__ == "__main__":
-  print("assembling...")
+  print("**** ASSEMBLER ****")
   for line in f:
+    print(line)
     if "@" in line: # comments
       line = line[:line.index("@")]
     if line.strip() == "" or line[0] in [".", "_"]: # comment line or directive

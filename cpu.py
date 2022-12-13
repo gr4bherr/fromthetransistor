@@ -198,6 +198,41 @@ def barrelshifter(n, shiftam, shift, carry, rotate = False):
       regs[CPSR] = regs[CPSR] ^ 0x20000000
   return res
 
+def conditioncheck(cond):
+  n, z, c, v = [int(x) for x in f"{regs[CPSR]:032b}"[:4]]
+  # EQ
+  if cond == 0 and z: return True
+  # NE
+  elif cond == 1 and not z: return True
+  # CS
+  elif cond == 2 and c: return True
+  # CC
+  elif cond == 3 and not c: return True
+  # MI
+  elif cond == 4 and n: return True
+  # PL
+  elif cond == 5 and not n: return True
+  # VS
+  elif cond == 6 and v: return True
+  # VC
+  elif cond == 7 and not v: return True
+  # HI
+  elif cond == 8 and c and not z: return True
+  # LS
+  elif cond == 9 and not c and z: return True
+  # GE
+  elif cond == 10 and z == v: return True
+  # LT
+  elif cond == 11 and z != v: return True
+  # GT
+  elif cond == 12 and not z and n == v: return True
+  # LE
+  elif cond == 13 and (z or n != v): return True
+  # AL
+  elif cond == 14: return True
+  # invalid
+  else: return False
+
 def advance():
   # todo: not sure if this is right
   if int(mem[regs[15]], 16) == 0:
@@ -210,8 +245,8 @@ def advance():
 
   # **** DECODE ****  (control unit)
   insnum = None
-  cond = int(ins[0:4], 2)
-  if cond != 0xf: # if condition valid
+  print(conditioncheck(int(ins[:4], 2)))
+  if conditioncheck(int(ins[:4], 2)): # if condition valid
     if ins[4:6] == "00":
       if ins[6] == "0":
         # DATA PROCESSING: reg {shift}
