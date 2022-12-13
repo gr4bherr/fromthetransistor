@@ -70,8 +70,7 @@ class Operands:
     # remove -
     val = val[1:] if "-" in val else val
     # hex
-    if len(val) > 2 and val[1] == "X":
-      val = f"{int(val[2:], 16)}"
+    if len(val) > 2 and val[1] == "X": val = f"{int(val[2:], 16)}"
     num = f"{int(val):0{size}b}"
     # rotate
     if rotate:
@@ -116,11 +115,9 @@ class Operands:
     # no shift
     else:
       # imm
-      if self.imm:
-        return self._immediate(self.imm, noshiftsize, rotate)
+      if self.imm: return self._immediate(self.imm, noshiftsize, rotate)
       # reg
-      else:
-        return "0" * (noshiftsize-4) + self.regs[-1]
+      else: return "0" * (noshiftsize-4) + self.regs[-1]
 
   def bit32imm(self):
     return self._immediate(self.imm, 12, True)
@@ -287,7 +284,6 @@ def advance(mnemonic,operands):
 if __name__ == "__main__":
   print("**** ASSEMBLER ****")
   for line in f:
-    print(line)
     if "@" in line: # comments
       line = line[:line.index("@")]
     if line.strip() == "" or line[0] in [".", "_"]: # comment line or directive

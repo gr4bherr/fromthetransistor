@@ -11,8 +11,7 @@ def memprint():
   print("memory", "-" * 54)
   for key, val in mem.items():
     print(f"M{key:<2}: {val}", end="\t")
-    if (key+4) % 16 == 0:
-      print()
+    if (key+4) % 16 == 0: print()
   regprint()
   print("**** START ****")
 # print register bank content
@@ -33,6 +32,8 @@ memsize = 32 # in bytes
 mem = {x:"0" * 8 for x in range(0, memsize, 4)}
 PC = 15
 CPSR = 16
+# FIQ disable, IRQ disable, T clear, mode: supervisor
+regs[CPSR] = 0b111010011 
 # not a valid clock of course (waits on instructions to be done)
 def clk():
   time.sleep(0.1) # 10 Hz
@@ -45,60 +46,28 @@ def load():
 # if val negative -> two's complement
 def totwoscomp(val, bits = 32):
   # if val negative
-  if (val & (1 << (bits-1))) != 0:
-    val = val - (1 << bits)
+  if (val & (1 << (bits-1))) != 0: val = val - (1 << bits)
   # sign extend
   return val & ((2 ** bits) - 1)
 
 # **** COMPONENTS **** 
 def alu(opcode, s, dest, op1, op2):
-  # AND
-  if opcode == 0:
-    res = op1 & op2
-  # EOR
-  elif opcode == 1:
-    res = op1 ^ op2
-  # SUB
-  elif opcode == 2:
-    res = op1 - op2
-  # RSB
-  elif opcode == 3:
-    res = op2 - op1
-  # ADD
-  elif opcode == 4:
-    res = op1 + op2
-  # ADC
-  elif opcode == 5:
-    res = op1 + op2 + int(f"{regs[CPSR]:032b}"[2])
-  # SBC
-  elif opcode == 6:
-    res = op1 - op2 + int(f"{regs[CPSR]:032b}"[2])
-  # RSC
-  elif opcode == 7:
-    res = op2 - op1 + int(f"{regs[CPSR]:032b}"[2])
-  # TST
-  elif opcode == 8:
-    res = op1 & op2
-  # TEQ
-  elif opcode == 9:
-    res = op1 ^ op2
-  # CMP
-  elif opcode == 10:
-    res = op1 - op2
-  # CMN
-  elif opcode == 11:
-    res = op1 + op2
-  # ORR
-  elif opcode == 12:
-    res = op1 | op2
-  # MOV
-  elif opcode == 13:
-    res = op2
-  # BIC
-  elif opcode == 14:
-    res = op1 & ~op2
-  #MVN
-  elif opcode == 15:
+  if opcode == 0: res = op1 & op2 # AND
+  elif opcode == 1: res = op1 ^ op2 # EOR
+  elif opcode == 2: res = op1 - op2 # SUB
+  elif opcode == 3: res = op2 - op1 # RSB
+  elif opcode == 4: res = op1 + op2 # ADD
+  elif opcode == 5: res = op1 + op2 + int(f"{regs[CPSR]:032b}"[2]) # ADC
+  elif opcode == 6: res = op1 - op2 + int(f"{regs[CPSR]:032b}"[2]) # SBC
+  elif opcode == 7: res = op2 - op1 + int(f"{regs[CPSR]:032b}"[2]) # RSC
+  elif opcode == 8: res = op1 & op2 # TST
+  elif opcode == 9: res = op1 ^ op2 # TEQ
+  elif opcode == 10: res = op1 - op2 # CMP
+  elif opcode == 11: res = op1 + op2 # CMN
+  elif opcode == 12: res = op1 | op2 # ORR
+  elif opcode == 13: res = op2 # MOV
+  elif opcode == 14: res = op1 & ~op2 # BIC
+  elif opcode == 15: #MVN
     res = ~op2
   # format
   res = totwoscomp(res)
@@ -106,42 +75,33 @@ def alu(opcode, s, dest, op1, op2):
   bop2 = f"{op1:032b}"
   bres = f"{res:032b}"
   # write to reg
-  if opcode not in [5, 6, 7, 8]:
-    regs[dest] = res
+  if opcode not in [5, 6, 7, 8]: regs[dest] = res
   # set flags
   if s == 1 and dest != 15:
     # N
-    if bres[0] == "1":
-      regs[CPSR] = regs[CPSR] | 0x80000000
-    else:
-      regs[CPSR] = regs[CPSR] & 0x7fffffff
+    if bres[0] == "1": regs[CPSR] = regs[CPSR] | 0x80000000
+    else: regs[CPSR] = regs[CPSR] & 0x7fffffff
     # Z
-    if res == 0:
-      regs[CPSR] = regs[CPSR] | 0x40000000
-    else:
-      regs[CPSR] = regs[CPSR] & 0xbfffffff
+    if res == 0: regs[CPSR] = regs[CPSR] | 0x40000000
+    else: regs[CPSR] = regs[CPSR] & 0xbfffffff
     # C
     # sub
     if opcode in [2, 3 ,6, 7, 10]:
-      if op1 < op2:
-        regs[CPSR] = regs[CPSR] & 0xdfffffff
-      else:
-        regs[CPSR] = regs[CPSR] | 0x20000000
+      if op1 < op2: regs[CPSR] = regs[CPSR] & 0xdfffffff
+      else: regs[CPSR] = regs[CPSR] | 0x20000000
     # add
     if opcode in [4, 5, 11]:
-      if bop1[0] == "1" and bop2[0] == "1": # unsigned overflow
-        regs[CPSR] = regs[CPSR] | 0x20000000
-      else:
-        regs[CPSR] = regs[CPSR] & 0xdfffffff
+      # unsigned overflow
+      if bop1[0] == "1" and bop2[0] == "1": regs[CPSR] = regs[CPSR] | 0x20000000
+      else: regs[CPSR] = regs[CPSR] & 0xdfffffff
     # V
     if opcode in [2,3,4,5,6,7,10]:
-      if bop1[0] == "0" and bop2[0] == "0" and bres[0] == "1": # signed overflow
-        regs[CPSR] = regs[CPSR] | 0x10000000
-      else:
-        regs[CPSR] = regs[CPSR] & 0xefffffff
+      # signed overflow
+      if bop1[0] == "0" and bop2[0] == "0" and bres[0] == "1": regs[CPSR] = regs[CPSR] | 0x10000000
+      else: regs[CPSR] = regs[CPSR] & 0xefffffff
     
-# rotate: False -> shift, rotate: True -> rotate (no rrx)
-def barrelshifter(n, shiftam, shift, carry, rotate = False):
+# rotate: False -> shift, rotate: True -> rotate (no rrx) (used for imm num formating)
+def barrelshifter(n, shiftam, shift, rotate = False):
   width = 32
   # LSL (ASL)
   if shift == 0:
@@ -192,46 +152,28 @@ def barrelshifter(n, shiftam, shift, carry, rotate = False):
         res = (n >> shiftam | n << (width - shiftam)) & (2 ** width - 1)
   # don't set flags when doing op2
   if rotate: 
-    if carry == 1:
-      regs[CPSR] = regs[CPSR] & 0x20000000
-    else:
-      regs[CPSR] = regs[CPSR] ^ 0x20000000
+    if carry == 1: regs[CPSR] = regs[CPSR] & 0x20000000
+    else: regs[CPSR] = regs[CPSR] ^ 0x20000000
   return res
 
 def conditioncheck(cond):
   n, z, c, v = [int(x) for x in f"{regs[CPSR]:032b}"[:4]]
-  # EQ
-  if cond == 0 and z: return True
-  # NE
-  elif cond == 1 and not z: return True
-  # CS
-  elif cond == 2 and c: return True
-  # CC
-  elif cond == 3 and not c: return True
-  # MI
-  elif cond == 4 and n: return True
-  # PL
-  elif cond == 5 and not n: return True
-  # VS
-  elif cond == 6 and v: return True
-  # VC
-  elif cond == 7 and not v: return True
-  # HI
-  elif cond == 8 and c and not z: return True
-  # LS
-  elif cond == 9 and not c and z: return True
-  # GE
-  elif cond == 10 and z == v: return True
-  # LT
-  elif cond == 11 and z != v: return True
-  # GT
-  elif cond == 12 and not z and n == v: return True
-  # LE
-  elif cond == 13 and (z or n != v): return True
-  # AL
-  elif cond == 14: return True
-  # invalid
-  else: return False
+  if cond == 0 and z: return True # EQ
+  elif cond == 1 and not z: return True # NE
+  elif cond == 2 and c: return True # CS
+  elif cond == 3 and not c: return True # CC
+  elif cond == 4 and n: return True # MI
+  elif cond == 5 and not n: return True # PL
+  elif cond == 6 and v: return True # VS
+  elif cond == 7 and not v: return True # VC
+  elif cond == 8 and c and not z: return True # HI
+  elif cond == 9 and not c and z: return True # LS
+  elif cond == 10 and z == v: return True # GE
+  elif cond == 11 and z != v: return True # LT
+  elif cond == 12 and not z and n == v: return True # GT
+  elif cond == 13 and (z or n != v): return True # LE
+  elif cond == 14: return True # AL
+  else: return False # invalid
 
 def advance():
   # todo: not sure if this is right
@@ -244,12 +186,11 @@ def advance():
   print(f"\n{ins}")
 
   # **** DECODE ****  (control unit)
-  insnum = None
   print(conditioncheck(int(ins[:4], 2)))
   if conditioncheck(int(ins[:4], 2)): # if condition valid
     if ins[4:6] == "00":
       if ins[6] == "0":
-        # DATA PROCESSING: reg {shift}
+        # DATA PROCESSING: reg {shift} (1/2)
         if not re.match("10..0", ins[7:12]) and (re.match("...0", ins[24:28]) or re.match("0..1", ins[24:28])):
           insnum = 0x0
           i = int(ins[6], 2)
@@ -263,13 +204,14 @@ def advance():
           rm = regs[int(ins[28:], 2)]
         elif re.match("10..0", ins[7:12]) and re.match("0...", ins[24:28]):
           if re.match("0...", ins[24:28]):
-            # PSR TRANSFER: mrs reg, msr reg
+            # PSR TRANSFER: mrs reg, msr reg (1/2)
             if ins[25:28] == "000":
               insnum = 0x1
+              i = int(ins[6])
               psr = int(ins[9], 2) # 0: cpsr, 1: spsr
               direction = int(ins[10], 2) # 0: mrs, 1: msr
-              rd = regs[int(ins[16:20], 2)]
-              rn = regs[int(ins[28:], 2)]
+              rd = int(ins[16:20], 2)
+              rm = regs[int(ins[28:], 2)]
             elif ins[25:28] == "001":
               # BRANCH AND EXCHANGE
               if ins[9:11] == "01":
@@ -282,7 +224,7 @@ def advance():
               insnum = 0x2
               a = int(ins[10], 2) # 0: mul, 1: mla
               s = int(ins[11], 2) # set condition code
-              rd = regs[int(ins[12:16], 2)]
+              rd = int(ins[12:16], 2)
               rn = regs[int(ins[16:20], 2)]
               rs = regs[int(ins[20:24], 2)]
               rm = regs[int(ins[28:], 2)]
@@ -290,10 +232,10 @@ def advance():
             elif re.match("1...", ins[8:12]):
               insnum = 0x3
               u = int(ins[9], 2) # 0: unsinged, 1: signed
-              a = int(ins[10], 2) # 0: mul, 1: mla
+              a = int(ins[10], 2) # 0: mull, 1: mlal
               s = int(ins[11], 2) # set condition code
-              rdhi = regs[int(ins[12:16], 2)]
-              rdlo = regs[int(ins[16:20], 2)]
+              rdhi = int(ins[12:16], 2)
+              rdlo = int(ins[16:20], 2)
               rs = regs[int(ins[20:24], 2)]
               rm = regs[int(ins[28:], 2)]
         # HALF WORD DATA TRANSFER
@@ -319,7 +261,7 @@ def advance():
           rd = regs[int(ins[16:20], 2)]
           rm = regs[int(ins[28:], 2)]
       elif ins[6] == "1":
-        # DATA PROCESSING: imm
+        # DATA PROCESSING: imm (2/2)
         if not re.match("10..0", ins[7:12]):
           insnum = 0x0
           i = int(ins[6], 2)
@@ -329,9 +271,10 @@ def advance():
           rd = int(ins[16:20], 2)
           rotate = int(ins[20:24], 2) * 2
           imm = int(ins[24:], 2)
-        # PSR TRANSFER: msr imm
+        # PSR TRANSFER: msr imm (2/2)
         elif re.match("10.10", ins[7:12]):
           insnum = 0x1
+          i = int(ins[6])
           psr = int(ins[9], 2) # 0: cpsr, 1: spsr
           direction = int(ins[10], 2) # 0: mrs, 1: msr
           rotate = int(ins[20:24], 2)
@@ -349,8 +292,7 @@ def advance():
       l = int(ins[11], 2) # 0: str, 1: ldr
       rn = regs[int(ins[12:16], 2)]
       rd = regs[int(ins[16:20], 2)]
-      if i == 0:
-        imm = int(ins[20:], 2)
+      if i == 0: imm = int(ins[20:], 2)
       else:
         shiftam = int(ins[20:25], 2)
         shift = int(ins[25:27], 2)
@@ -400,63 +342,99 @@ def advance():
       # elif re.match("10...1", ins[6:12]) and ins[27] == "1":
       #   print("mrc")
       #   insnum = 0xe
+  else: insnum = -1
 
   # **** EXECUTE ****
   # data processing
   if insnum == 0x0:
-    print(hex(insnum))
-    if i == 0:
-      op2 = barrelshifter(rm, shiftam, shift, True)
-      #print("op2:", op2)
-    else:
+    print("instruction:", hex(insnum))
+    # reg
+    if i == 0: op2 = barrelshifter(rm, shiftam, shift, True)
+    # imm
+    else: 
       op2 = barrelshifter(imm, rotate, 3, True)
-      #print("op2:", op2)
     alu(opcode, s, rd, rn, op2)
   # psr transfer
   elif insnum == 0x1:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
+    # SPSR not supported
+    # mrs
+    if direction == 0: regs[rd] = regs[CPSR]
+    # msr
+    else:
+      if i == 0: regs[CPSR] = rm # reg
+      else: regs[CPSR] = barrelshifter(imm, rotate, 3, True) # imm
   # multiply
   elif insnum == 0x2:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
+    # mul
+    if a == 0: res = rm*rs
+    # mla
+    else: res = rm*rs+rn
+    # set flags
+    if s:
+      # N
+      if f"{res:032b}"[0] == "1": regs[CPSR] = regs[CPSR] | 0x80000000
+      else: regs[CPSR] = regs[CPSR] & 0x7fffffff
+      # Z
+      if res == 0: regs[CPSR] = regs[CPSR] | 0x40000000
+      else: regs[CPSR] = regs[CPSR] & 0xbfffffff
+    regs[rd] = res
   # multiply long
   elif insnum == 0x3:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
+    # mull
+    if a == 0: res = rm*rs
+    # mlal
+    else: 
+      rn = int(f"{regs[rdhi]:032b}{regs[rdlo]:032b}", 2)
+      res = rm*rs+rn
+    # set flags
+    if s:
+      # N
+      if f"{res:064b}"[0] == "1": regs[CPSR] = regs[CPSR] | 0x80000000
+      else: regs[CPSR] = regs[CPSR] & 0x7fffffff
+      # Z
+      if res == 0: regs[CPSR] = regs[CPSR] | 0x40000000
+      else: regs[CPSR] = regs[CPSR] & 0xbfffffff
+    regs[rdhi] = int(f"{res:064b}"[:32], 2)
+    regs[rdlo] = int(f"{res:064b}"[32:], 2)
   # single data swap
   elif insnum == 0x4:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # branch and exchange
   elif insnum == 0x5:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # half word data transfer (register offset)
   elif insnum == 0x6:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # half word data transfer (immediate offset)
   elif insnum == 0x7:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # single data transfer
   elif insnum == 0x8:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # undefined
   elif insnum == 0x9:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # block data transfer
   elif insnum == 0xa:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # branch
   elif insnum == 0xb:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # software interrupt
   elif insnum == 0xf:
-    print(hex(insnum))
+    print("instruction:", hex(insnum))
   # # coprocessor data transfer
   # elif insnum == 0xc:
-  #   print(hex(insnum))
+  #   print("instruction:", hex(insnum))
   # # coprocessor data operation
   # elif insnum == 0xd:
-  #   print(hex(insnum))
+  #   print("instruction:", hex(insnum))
   # # coprocessor register transfer
   # elif insnum == 0xe:
-  #   print(hex(insnum))
+  #   print("instruction:", hex(insnum))
 
   regs[PC] += 4
   regprint()
