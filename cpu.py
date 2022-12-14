@@ -2,8 +2,9 @@
 import re
 import time
 
+# ./assembler.py assin.s && ./cpu.py
+
 infile = open("assout.txt", "r")
-outfile = open("disassout.txt", "r")
 
 # **** print function **** 
 # print register bank content
