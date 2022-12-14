@@ -5,7 +5,7 @@ import time
 infile = open("assout.txt", "r")
 outfile = open("disassout.txt", "r")
 
-# **** print functions **** 
+# **** print function **** 
 # print register bank content
 def regprint():
   print("registers","-"*51)
@@ -36,23 +36,24 @@ class Memory:
     for i in range(bytenum):
       self.memory[adr+i] = int(val[i*2:i*2+2], 16)
 
-  def fetch(self, adr, bytenum = 4):
+  def load(self, adr, bytenum = 4):
     res = ""
     for i in range(bytenum):
       res += f"{self.memory[adr+i]:02x}"
     return int(res, 16)
 
 
-print("\n**** ARM7TDMI ****\n")
 regs = {x:0 for x in range(17)}
 mem = Memory(64)
-print(mem.memory)
-#memsize = 128 # in bytes
-#mem = {x:"0" * 8 for x in range(0, memsize, 4)}
+ins = []
 PC = 15
 CPSR = 16
 # FIQ disable, IRQ disable, T clear, mode: supervisor
 regs[CPSR] = 0b111010011 
+# pipeline
+instructions = []
+controlsignals= []
+
 # not a valid clock of course (waits on instructions to be done)
 def clk():
   time.sleep(0.1) # 10 Hz
@@ -69,8 +70,6 @@ def totwoscomp(val, bits = 32):
   if (val & (1 << (bits-1))) != 0: val = val - (1 << bits)
   # sign extend
   return val & ((2 ** bits) - 1)
-
-
 
 # **** COMPONENTS **** 
 def alu(opcode, s, dest, op1, op2):
@@ -128,11 +127,9 @@ def barrelshifter(n, shiftam, shift, rotate = False):
   # LSL (ASL)
   if shift == 0:
     if shiftam == 32:
-      carry = bin(n)[-1]
-      res = 0
+      carry, res = bin(n)[-1], 0
     elif shiftam > 32:
-      carry = 0
-      res = 0
+      carry, res = 0, 0
     else:
       tmp = bin(n << shiftam)
       carry = int(tmp[-33]) if len(tmp) - 2 > 32 else 0
@@ -140,19 +137,15 @@ def barrelshifter(n, shiftam, shift, rotate = False):
   # LSR
   elif shift == 1:
     if shiftam == 32:
-      carry = bin(n)[2]
-      res = 0
+      carry, res = bin(n)[2], 0
     elif shiftam > 32:
-      carry = 0
-      res = 0
+      carry, res = 0, 0
     else:
-      carry = int(f"{n:032b}"[-shiftam])
-      res = n >> shiftam
+      carry, res = int(f"{n:032b}"[-shiftam]), n >> shiftam
   # ASR
   elif shift == 2:
     if shiftam >= 32:
-      carry = bin(n[2])
-      res = n
+      carry, res = bin(n[2]), n
     else:
       carry = int(f"{n:032b}"[-shiftam])
       num = (f"{n:032b}"[0] * shiftam) + "0" * (width - shiftam)
@@ -167,8 +160,7 @@ def barrelshifter(n, shiftam, shift, rotate = False):
     # ror
     else:
       if shiftam == 32:
-        carry = bin(n[2])
-        res = n
+        carry, res = bin(n[2]), n
       else:
         shiftam = shiftam % 32
         res = (n >> shiftam | n << (width - shiftam)) & (2 ** width - 1)
@@ -197,158 +189,76 @@ def conditioncheck(cond):
   elif cond == 14: return True # AL
   else: return False # invalid
 
-def advance():
-  # todo: not sure if this is right
-
-  if mem.fetch(regs[15]) == 0:
-    print("**** FINISHED ****")
-    quit()
-
-  # **** FETCH ****
-  #ins = f"{bin(int(mem[regs[15]], 16))[2:]:>032}"
-  ins = f"{mem.fetch(regs[15]):032b}"
-  print(f"\n{ins}")
-
-  # **** DECODE ****  (control unit)
+# **** PIPELIINE **** 
+def decode(ins):
   if conditioncheck(int(ins[:4], 2)): # if condition valid
     if ins[4:6] == "00":
       if ins[6] == "0":
         # DATA PROCESSING: reg {shift} (1/2)
         if not re.match("10..0", ins[7:12]) and (re.match("...0", ins[24:28]) or re.match("0..1", ins[24:28])):
-          insnum = 0x0
-          i = int(ins[6], 2)
-          opcode = int(ins[7:11], 2) 
-          s = int(ins[11]) # set condition code
-          rn = regs[int(ins[12:16], 2)]
-          rd = int(ins[16:20], 2)
-          shiftam = int(ins[20:25], 2) # if register, shift right
-          shift = int(ins[25:27], 2)
-          t = int(ins[27], 2) # 0: imm shift, 1: reg shift
-          rm = regs[int(ins[28:], 2)]
+          return {"insnum": 0x0, "i": int(ins[6], 2), "opcode": int(ins[7:11], 2), "s": int(ins[11]), "rn": regs[int(ins[12:16], 2)], "rd": int(ins[16:20], 2), "shiftam": int(ins[20:25], 2), "shift": int(ins[25:27], 2), "t": int(ins[27], 2), "rm": regs[int(ins[28:], 2)]}
         elif re.match("10..0", ins[7:12]) and re.match("0...", ins[24:28]):
           if re.match("0...", ins[24:28]):
             # PSR TRANSFER: mrs reg, msr reg (1/2)
             if ins[25:28] == "000":
-              insnum = 0x1
-              i = int(ins[6])
-              psr = int(ins[9], 2) # 0: cpsr, 1: spsr
-              direction = int(ins[10], 2) # 0: mrs, 1: msr
-              rd = int(ins[16:20], 2)
-              rm = regs[int(ins[28:], 2)]
+              return {"insnum": 0x1, "i": int(ins[6]), "psr": int(ins[9], 2), "direction": int(ins[10], 2), "rd": int(ins[16:20], 2), "rm": regs[int(ins[28:], 2)]}
             elif ins[25:28] == "001":
               # BRANCH AND EXCHANGE
               if ins[9:11] == "01":
-                insnum = 0x5
-                rn = regs[int(ins[28:], 2)]
+                return {"insnum": 0x5, "rn": regs[int(ins[28:], 2)]}
         elif re.match("0....", ins[7:12]) and re.match("1001", ins[24:28]):
           if ins[24:28] == "1001":
             # MULTIPLY
             if re.match("00..", ins[8:12]):
-              insnum = 0x2
-              a = int(ins[10], 2) # 0: mul, 1: mla
-              s = int(ins[11], 2) # set condition code
-              rd = int(ins[12:16], 2)
-              rn = regs[int(ins[16:20], 2)]
-              rs = regs[int(ins[20:24], 2)]
-              rm = regs[int(ins[28:], 2)]
+              return {"insnum": 0x2, "a": int(ins[10], 2), "s": int(ins[11], 2), "rd": int(ins[12:16], 2), "rn": regs[int(ins[16:20], 2)], "rs": regs[int(ins[20:24], 2)], "rm": regs[int(ins[28:], 2)]}
             # MULTIPLY LONG
             elif re.match("1...", ins[8:12]):
-              insnum = 0x3
-              u = int(ins[9], 2) # 0: unsinged, 1: signed
-              a = int(ins[10], 2) # 0: mull, 1: mlal
-              s = int(ins[11], 2) # set condition code
-              rdhi = int(ins[12:16], 2)
-              rdlo = int(ins[16:20], 2)
-              rs = regs[int(ins[20:24], 2)]
-              rm = regs[int(ins[28:], 2)]
+              return {"insnum": 0x3, "u": int(ins[9], 2), "a": int(ins[10], 2), "s": int(ins[11], 2), "rdhi": int(ins[12:16], 2), "rdlo": int(ins[16:20], 2), "rs": regs[int(ins[20:24], 2)], "rm": regs[int(ins[28:], 2)]}
         # HALF WORD DATA TRANSFER
         elif (not re.match("0..1.", ins[7:12]) or re.match("0xx10", ins[7:12])) and (ins[24:28] in ["1011", "1101", "1111"]):
           # if i == 1 and l == 1 and rn == 1111 -> literal offset
-          p = int(ins[7], 2) # 0: post index, 1: pre index
-          u = int(ins[8], 2) # 0: down bit, 1: up bit
-          i = int(ins[9], 2) # 0: reg offset, 1: imm offset
-          w = int(ins[10], 2) # 0: no write back, 1: write back
-          l = int(ins[11], 2) # 0: str, 1: ldr
-          rn = regs[int(ins[12:16], 2)]
-          rd = regs[int(ins[16:20], 2)]
-          offset1 = int(ins[20:24], 2)
-          sh = int(ins[25:27], 2) # 00: SWP, 01: H, 10: SB, 11: SH
-          offset2 = int(ins[28:], 2) if i == 0 else regs[int(ins[28:], 2)]
-          insnum = 0x6 if i == 0 else 0x7
+          return {"p": int(ins[7], 2), "u": int(ins[8], 2), "i": int(ins[9], 2), "w": int(ins[10], 2), "l": int(ins[11], 2), "rn": int(ins[12:16], 2), "rd": int(ins[16:20], 2), "off1": ins[20:24], "sh": int(ins[25:27], 2), "off2": ins[28:] if i == 0 else regs[int(ins[28:], 2)], "insnum": 0x6 if i == 0 else 0x7}
         # SINGLE DATA SWAP
         # 1110 00 0 10000 11110000000000000000
         elif re.match("10.00", ins[7:12]) and ins[20:28] == "00001001":
-          insnum = 0x4
-          b = int(ins[9], 2) # 0: word, 1: byte
-          rn = regs[int(ins[12:16], 2)]
-          rd = regs[int(ins[16:20], 2)]
-          rm = regs[int(ins[28:], 2)]
+          return {"insnum": 0x4, "b": int(ins[9], 2), "rn": regs[int(ins[12:16], 2)], "rd": regs[int(ins[16:20], 2)], "rm": regs[int(ins[28:], 2)]}
       elif ins[6] == "1":
         # DATA PROCESSING: imm (2/2)
         if not re.match("10..0", ins[7:12]):
-          insnum = 0x0
-          i = int(ins[6], 2)
-          opcode = int(ins[7:11], 2)
-          s = int(ins[11], 2) # set condition code
-          rn = regs[int(ins[12:16], 2)]
-          rd = int(ins[16:20], 2)
-          rotate = int(ins[20:24], 2) * 2
-          imm = int(ins[24:], 2)
+          return {"insnum": 0x0, "i": int(ins[6], 2), "opcode": int(ins[7:11], 2), "s": int(ins[11], 2), "rn": regs[int(ins[12:16], 2)], "rd": int(ins[16:20], 2), "rotate": int(ins[20:24], 2) * 2, "imm": int(ins[24:], 2)}
         # PSR TRANSFER: msr imm (2/2)
         elif re.match("10.10", ins[7:12]):
-          insnum = 0x1
-          i = int(ins[6])
-          psr = int(ins[9], 2) # 0: cpsr, 1: spsr
-          direction = int(ins[10], 2) # 0: mrs, 1: msr
-          rotate = int(ins[20:24], 2)
-          imm = int(ins[24:], 2)
+          return {"insnum": 0x1, "i": int(ins[6]), "psr": int(ins[9], 2), "direction": int(ins[10], 2), "rotate": int(ins[20:24], 2), "imm": int(ins[24:], 2)}
     # SINGE DATA TRANSFER
     elif ins[4:6] == "01":
-      insnum = 0x8
-      # if p == 0 and w == 1 -> T present
-      # if i == 0 and rn = 1111 and T not present -> literal offset
-      i = int(ins[6], 2) # 0: imm offset, 1: reg offset
-      p = int(ins[7], 2) # 0: post index, 1: pre index
-      u = int(ins[8], 2) # 0: down bit, 1: up bit
-      b = int(ins[9], 2) # 0: word, 1: byte (b == 1 -> B present)
-      w = int(ins[10], 2) # 0: no write back, 1: write back
-      l = int(ins[11], 2) # 0: str, 1: ldr
-      rn = int(ins[12:16], 2)
-      rd = int(ins[16:20], 2)
-      if i == 0: imm = int(ins[20:], 2)
+      tmp = {"insnum": 0x8, "i": int(ins[6], 2), "p": int(ins[7], 2), "u": int(ins[8], 2), "b": int(ins[9], 2), "w": int(ins[10], 2), "l": int(ins[11], 2), "rn": int(ins[12:16], 2), "rd": int(ins[16:20], 2)}
+      if tmp["i"] == 0: 
+        tmp["imm"] = int(ins[20:], 2)
       else:
-        shiftam = int(ins[20:25], 2)
-        shift = int(ins[25:27], 2)
-        rm = regs[int(ins[28:], 2)]
+        tmp["shiftam"] = int(ins[20:25], 2)
+        tmp["shift"] = int(ins[25:27], 2)
+        tmp["rm"] = regs[int(ins[28:], 2)]
+      return tmp
     elif ins[4:6] == "10":
       # BLOCK DATA TRANSFER
       if ins[6] == "0":
-        insnum = 0xa
-        p = int(ins[7], 2) # 0: post index, 1: pre index
-        u = int(ins[8], 2) # 0: down bit, 1: up bit
-        s = int(ins[9], 2) # 0: dont load psr, 1: load psr
-        w = int(ins[10], 2) # 0: no write back, 1: write back
-        l = int(ins[11], 2) # 0: str, 1: ldr
-        rn = regs[int(ins[12:16], 2)]
-        reglist = int(ins[16:], 2)
+        return {"insnum": 0xa, "p": int(ins[7], 2), "u": int(ins[8], 2), "s": int(ins[9], 2), "w": int(ins[10], 2), "l": int(ins[11], 2), "rn": regs[int(ins[12:16], 2)], "reglist": int(ins[16:], 2)}
       # BRANCH
       elif ins[6] == "0":
-        insnum = 0xb
-        l = int(ins[7], 2)
-        offset = int(ins[8:], 2)
+        return {"insnum": 0xb, "l": int(ins[7], 2), "offset": int(ins[8:], 2)}
     elif ins[4:6] == "11":
       # UNDEFINED
       if re.match("00000.", ins[6:12]):
-        insnum = 0x9
+        return {"insnum": 0x9}
       # SOFTWARE INTERRUPT
       elif re.match("110000", ins[6:12]):
-        insnum = 0xf
+        return {"insnum": 0xf}
       # # COPROCESSOR DATA TRANSFER
       # elif re.match("0....0", ins[6:12]) and not re.match("000.00", ins[6:12]):
       #   print("stc")
-      #   insnum = 0xc
+      #   return {"insnum": 0xc}
       # elif re.match("0....1", ins[6:12]) and not re.match("000.01", ins[6:12]):
-      #   insnum = 0xc
+      #   return {"insnum": 0xc}
       #   if ins[11:15] == "1111":
       #     print("ldc (imm)")
       #   else:
@@ -356,139 +266,154 @@ def advance():
       # # COPROCESSOR DATA OPERATION
       # elif re.match("10....", ins[6:12]) and ins[27] == "0":
       #   print("cdp")
-      #   insnum = 0xd
+      #   return {"insnum": 0xd}
       # # COPROCESSOR REGISTER TRANSFER
       # elif re.match("10...0", ins[6:12]) and ins[27] == "1":
       #   print("mcr")
-      #   insnum = 0xe
+      #   return {"insnum": 0x3}
       # elif re.match("10...1", ins[6:12]) and ins[27] == "1":
       #   print("mrc")
-      #   insnum = 0xe
-  else: insnum = -1
+      #   return {"insnum": 0xe}
+  else: return {"insnum": -1}
 
-  # **** EXECUTE ****
+def execute(cs):
   # data processing
-  if insnum == 0x0:
-    print("instruction:", hex(insnum))
+  if cs["insnum"] == 0x0:
+    print("instruction:", hex(cs["insnum"]))
     # reg
-    if i == 0: op2 = barrelshifter(rm, shiftam, shift, True)
+    if cs["i"] == 0: op2 = barrelshifter(cs["rm"], cs["shiftam"], cs["shift"], True)
     # imm
-    else: op2 = barrelshifter(imm, rotate, 3, True)
-    alu(opcode, s, rd, rn, op2)
-  # psr transfer
-  elif insnum == 0x1:
-    print("instruction:", hex(insnum))
+    else: op2 = barrelshifter(cs["imm"], cs["rotate"], 3, True)
+    alu(cs["opcode"], cs["s"], cs["rd"], cs["rn"], op2)
+    # psr transfer
+  elif cs["insnum"] == 0x1:
+    print("instruction:", hex(cs["insnum"]))
     # SPSR not supported
     # mrs
-    if direction == 0: regs[rd] = regs[CPSR]
+    if cs["direction"] == 0: regs[cs["rd"]] = regs[CPSR]
     # msr
     else:
-      if i == 0: regs[CPSR] = rm # reg
-      else: regs[CPSR] = barrelshifter(imm, rotate, 3, True) # imm
+      if cs["i"] == 0: regs[CPSR] = cs["rm"] # reg
+      else: regs[CPSR] = barrelshifter(cs["imm"], cs["rotate"], 3, True) # imm
   # multiply
-  elif insnum == 0x2:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x2:
+    print("instruction:", hex(cs["insnum"]))
     # mul
-    if a == 0: res = rm*rs
+    if cs["a"] == 0: res = cs["rm"] * cs["rs"]
     # mla
-    else: res = rm*rs+rn
+    else: res = cs["rm"] * cs["rs"] + cs["rn"]
     # set flags
-    if s:
+    if cs["s"]:
       # N
       if f"{res:032b}"[0] == "1": regs[CPSR] = regs[CPSR] | 0x80000000
       else: regs[CPSR] = regs[CPSR] & 0x7fffffff
       # Z
       if res == 0: regs[CPSR] = regs[CPSR] | 0x40000000
       else: regs[CPSR] = regs[CPSR] & 0xbfffffff
-    regs[rd] = res
+    regs[cs["rd"]] = res
   # multiply long
-  elif insnum == 0x3:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x3:
+    print("instruction:", hex(cs["insnum"]))
     # mull
-    if a == 0: res = rm*rs
+    if cs["a"] == 0: res = cs["rm"] * cs["rs"]
     # mlal
     else: 
-      rn = int(f"{regs[rdhi]:032b}{regs[rdlo]:032b}", 2)
-      res = rm*rs+rn
+      rn = int(f"{regs[cs['rdhi']]:032b}{regs[cs['rdlo']]:032b}", 2)
+      res = cs["rm"] * cs["rs"] + cs["rn"]
     # set flags
-    if s:
+    if cs["s"]:
       # N
       if f"{res:064b}"[0] == "1": regs[CPSR] = regs[CPSR] | 0x80000000
       else: regs[CPSR] = regs[CPSR] & 0x7fffffff
       # Z
       if res == 0: regs[CPSR] = regs[CPSR] | 0x40000000
       else: regs[CPSR] = regs[CPSR] & 0xbfffffff
-    regs[rdhi] = int(f"{res:064b}"[:32], 2)
-    regs[rdlo] = int(f"{res:064b}"[32:], 2)
+    regs[cs["rdhi"]] = int(f"{res:064b}"[:32], 2)
+    regs[cs["rdlo"]] = int(f"{res:064b}"[32:], 2)
   # single data swap
-  elif insnum == 0x4:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x4:
+    print("instruction:", hex(cs["insnum"]))
   # branch and exchange
-  elif insnum == 0x5:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x5:
+    print("instruction:", hex(cs["insnum"]))
   # half word data transfer (register offset)
-  elif insnum == 0x6:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x6:
+    print("instruction:", hex(cs["insnum"]))
   # half word data transfer (immediate offset)
-  elif insnum == 0x7:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x7:
+    print("instruction:", hex(cs["insnum"]))
   # single data transfer
-  elif insnum == 0x8:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x8:
+    print("instruction:", hex(cs["insnum"]))
     # byte / word
-    if b: bytenum = 1
+    if cs["b"]: bytenum = 1
     else: bytenum = 4
     # imm
-    if i == 0: offset = imm
-    else: offset = barrelshifter(rm, shiftam, shift)
+    if cs["i"] == 0: offset = cs["imm"]
+    else: offset = barrelshifter(cs["rm"], cs["shiftam"], cs["shift"])
     # pre index
-    if p == 1:
-      if u: address = regs[rn] + offset
-      else: address = regs[rn] - offset
+    if cs["p"] == 1:
+      if cs["u"]: address = regs[cs["rn"]] + offset
+      else: address = regs[cs["rn"]] - offset
     # post index
-    else: address = regs[rn]
+    else: address = regs[cs["rn"]]
     # write back
-    if u: writeback = regs[rn] + offset
-    else: writeback = regs[rn] - offset
-    if w == 1: regs[rn] = writeback
+    if cs["u"]: writeback = regs[cs["rn"]] + offset
+    else: writeback = regs[cs["rn"]] - offset
+    if cs["w"] == 1: regs[cs["rn"]] = writeback
     # ldr
-    if l == 1: regs[rd] = mem.fetch(address, bytenum)
+    if cs["l"] == 1: regs[cs["rd"]] = mem.load(address, bytenum)
     # str
-    else: mem.store(regs[rd], address, bytenum)
+    else: mem.store(regs[cs["rd"]], address, bytenum)
   # undefined
-  elif insnum == 0x9:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0x9:
+    print("instruction:", hex(cs["insnum"]))
   # block data transfer
-  elif insnum == 0xa:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0xa:
+    print("instruction:", hex(cs["insnum"]))
   # branch
-  elif insnum == 0xb:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0xb:
+    print("instruction:", hex(cs["insnum"]))
   # software interrupt
-  elif insnum == 0xf:
-    print("instruction:", hex(insnum))
+  elif cs["insnum"] == 0xf:
+    print("instruction:", hex(cs["insnum"]))
   # # coprocessor data transfer
-  # elif insnum == 0xc:
-  #   print("instruction:", hex(insnum))
+  # elif cs["insnum"] == 0xc:
+  #   print("instruction:", hex(cs["insnum"]))
   # # coprocessor data operation
-  # elif insnum == 0xd:
-  #   print("instruction:", hex(insnum))
+  # elif cs["insnum"] == 0xd:
+  #   print("instruction:", hex(cs["insnum"]))
   # # coprocessor register transfer
-  # elif insnum == 0xe:
-  #   print("instruction:", hex(insnum))
+  # elif cs["insnum"] == 0xe:
+  #   print("instruction:", hex(cs["insnum"]))
+
+# **** MAIN FUNCTION **** 
+def advance():
+  cycle = regs[PC] // 4
+  # **** FETCH ****
+  if int(f"{mem.load(regs[PC]):032b}", 2) != 0:
+    print("f", hex(int(f"{mem.load(regs[PC]):032b}", 2)))
+    instructions.append(f"{mem.load(regs[PC]):032b}")
+
+  # **** DECODE **** 
+  if cycle > 0 and len(instructions) != len(controlsignals):
+    print("d", hex(int(instructions[cycle - 1], 2)))
+    controlsignals.append(decode(instructions[cycle - 1]))
+
+  # **** EXECUTE ****
+  if cycle > 1:
+    if cycle > len(controlsignals) + 1:
+      quit()
+    print("e", controlsignals[cycle - 2])
+    execute(controlsignals[cycle - 2])
 
   regs[PC] += 4
   mem.print()
   regprint()
-
-
-
+  print()
 
 if __name__ == "__main__":
   programstore()
-  mem.print()
-  regprint()
-  print("\n**** START ****")
-  # run
+  print("\n**** ARM7TDMI ****\n")
   while clk():
     advance()

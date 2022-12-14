@@ -1,10 +1,6 @@
-mov r1, #24
-mov r2, #28
-mov r3, #4
+mov r7, #24
+mov r5, #28
 mov r4, #16
-mov r6, #0x1a
-str r1,[r2,r4]!
-str r1,[r2],r4
-ldr r1,[r2,#16]
-ldr r1,[r2,r3,lsl#2]
-ldr r1,[r6,#8]
+mov r2, #3
+SUB R4,R5,R7,LSR R2
+SUB R4,R5,R7,LSL #4
