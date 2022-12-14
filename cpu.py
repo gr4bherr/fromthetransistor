@@ -6,14 +6,6 @@ infile = open("assout.txt", "r")
 outfile = open("disassout.txt", "r")
 
 # **** print functions **** 
-# print memory content
-def memprint():
-  print("memory", "-" * 54)
-  for key, val in mem.items():
-    print(f"M{key:<2}: {val}", end="\t")
-    if (key+4) % 16 == 0: print()
-  regprint()
-  print("**** START ****")
 # print register bank content
 def regprint():
   print("registers","-"*51)
@@ -26,10 +18,37 @@ def regprint():
       print()
 
 # **** INIT ****
+class Memory:
+  def __init__(self, memsize):
+    # memsize in bytes
+    self.memory = {x:0 for x in range(0, memsize, 1)}
+
+  def print(self):
+    print("memory", "-" * 54)
+    for key, val in self.memory.items():
+      if (key) % 4 == 0: print(f"M{key:<2}: ", end="")
+      print(f"{val:02x}", end = "")
+      if (key + 1) % 4 == 0: print("\t", end = "")
+      if (key + 1) % 16 == 0: print()
+
+  def store(self, val, adr, bytenum = 4):
+    val = f"{val:08x}"
+    for i in range(bytenum):
+      self.memory[adr+i] = int(val[i*2:i*2+2], 16)
+
+  def fetch(self, adr, bytenum = 4):
+    res = ""
+    for i in range(bytenum):
+      res += f"{self.memory[adr+i]:02x}"
+    return int(res, 16)
+
+
 print("\n**** ARM7TDMI ****\n")
 regs = {x:0 for x in range(17)}
-memsize = 32 # in bytes
-mem = {x:"0" * 8 for x in range(0, memsize, 4)}
+mem = Memory(64)
+print(mem.memory)
+#memsize = 128 # in bytes
+#mem = {x:"0" * 8 for x in range(0, memsize, 4)}
 PC = 15
 CPSR = 16
 # FIQ disable, IRQ disable, T clear, mode: supervisor
@@ -39,9 +58,10 @@ def clk():
   time.sleep(0.1) # 10 Hz
   return True
 # load instructions into memory at the beginning
-def load():
+def programstore():
   for i, line in enumerate(infile):
-    mem[i*4] = line.strip()
+    line = int(line.strip(), 16)
+    mem.store(line, i * 4)
   
 # if val negative -> two's complement
 def totwoscomp(val, bits = 32):
@@ -49,6 +69,8 @@ def totwoscomp(val, bits = 32):
   if (val & (1 << (bits-1))) != 0: val = val - (1 << bits)
   # sign extend
   return val & ((2 ** bits) - 1)
+
+
 
 # **** COMPONENTS **** 
 def alu(opcode, s, dest, op1, op2):
@@ -177,16 +199,17 @@ def conditioncheck(cond):
 
 def advance():
   # todo: not sure if this is right
-  if int(mem[regs[15]], 16) == 0:
+
+  if mem.fetch(regs[15]) == 0:
     print("**** FINISHED ****")
     quit()
 
   # **** FETCH ****
-  ins = f"{bin(int(mem[regs[15]], 16))[2:]:>032}"
+  #ins = f"{bin(int(mem[regs[15]], 16))[2:]:>032}"
+  ins = f"{mem.fetch(regs[15]):032b}"
   print(f"\n{ins}")
 
   # **** DECODE ****  (control unit)
-  print(conditioncheck(int(ins[:4], 2)))
   if conditioncheck(int(ins[:4], 2)): # if condition valid
     if ins[4:6] == "00":
       if ins[6] == "0":
@@ -290,13 +313,12 @@ def advance():
       b = int(ins[9], 2) # 0: word, 1: byte (b == 1 -> B present)
       w = int(ins[10], 2) # 0: no write back, 1: write back
       l = int(ins[11], 2) # 0: str, 1: ldr
-      rn = regs[int(ins[12:16], 2)]
-      rd = regs[int(ins[16:20], 2)]
+      rn = int(ins[12:16], 2)
+      rd = int(ins[16:20], 2)
       if i == 0: imm = int(ins[20:], 2)
       else:
         shiftam = int(ins[20:25], 2)
         shift = int(ins[25:27], 2)
-        t = int(ins[27], 2)
         rm = regs[int(ins[28:], 2)]
     elif ins[4:6] == "10":
       # BLOCK DATA TRANSFER
@@ -351,8 +373,7 @@ def advance():
     # reg
     if i == 0: op2 = barrelshifter(rm, shiftam, shift, True)
     # imm
-    else: 
-      op2 = barrelshifter(imm, rotate, 3, True)
+    else: op2 = barrelshifter(imm, rotate, 3, True)
     alu(opcode, s, rd, rn, op2)
   # psr transfer
   elif insnum == 0x1:
@@ -414,6 +435,26 @@ def advance():
   # single data transfer
   elif insnum == 0x8:
     print("instruction:", hex(insnum))
+    # byte / word
+    if b: bytenum = 1
+    else: bytenum = 4
+    # imm
+    if i == 0: offset = imm
+    else: offset = barrelshifter(rm, shiftam, shift)
+    # pre index
+    if p == 1:
+      if u: address = regs[rn] + offset
+      else: address = regs[rn] - offset
+    # post index
+    else: address = regs[rn]
+    # write back
+    if u: writeback = regs[rn] + offset
+    else: writeback = regs[rn] - offset
+    if w == 1: regs[rn] = writeback
+    # ldr
+    if l == 1: regs[rd] = mem.fetch(address, bytenum)
+    # str
+    else: mem.store(regs[rd], address, bytenum)
   # undefined
   elif insnum == 0x9:
     print("instruction:", hex(insnum))
@@ -437,14 +478,17 @@ def advance():
   #   print("instruction:", hex(insnum))
 
   regs[PC] += 4
+  mem.print()
   regprint()
 
 
 
 
 if __name__ == "__main__":
-  load()
-  memprint()
+  programstore()
+  mem.print()
+  regprint()
+  print("\n**** START ****")
   # run
   while clk():
     advance()

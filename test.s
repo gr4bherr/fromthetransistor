@@ -1,7 +1,10 @@
-mov r1, #0xa
-mov r2, #0xb
-mov r3, #0xc
-mov r4, #0xd
-UMULLS         R2,R1,R3,R4
-UMLALS      R2,R1,R3,R4
-swi 0
+mov r1, #24
+mov r2, #28
+mov r3, #4
+mov r4, #16
+mov r6, #0x1a
+str r1,[r2,r4]!
+str r1,[r2],r4
+ldr r1,[r2,#16]
+ldr r1,[r2,r3,lsl#2]
+ldr r1,[r6,#8]
