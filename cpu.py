@@ -6,6 +6,8 @@ import time
 
 infile = open("assout.txt", "r")
 
+#todo: not finshed, got bored
+
 # **** print function **** 
 # print register bank content
 def regprint():
@@ -51,7 +53,7 @@ PC = 15
 CPSR = 16
 # FIQ disable, IRQ disable, T clear, mode: supervisor
 regs[CPSR] = 0b111010011 
-# pipeline
+# pipeline cache
 instructions = []
 controlsignals= []
 
