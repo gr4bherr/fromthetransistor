@@ -61,7 +61,7 @@ controlsignals= []
 def clk():
   time.sleep(0.1) # 10 Hz
   return True
-# load instructions into memory at the beginning
+# store instructions into memory at the beginning
 def programstore():
   for i, line in enumerate(infile):
     line = int(line.strip(), 16)

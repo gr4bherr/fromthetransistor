@@ -1,5 +1,5 @@
 $date
-	Thu Dec 15 07:20:54 2022
+	Thu Dec 29 07:09:55 2022
 $end
 $version
 	Icarus Verilog
@@ -11,33 +11,47 @@ $scope module cpuTB $end
 $var reg 1 ! clk $end
 $scope module arm7tdmi $end
 $var wire 1 ! clk $end
-$var wire 32 " memval [31:0] $end
-$var wire 32 # incrout [31:0] $end
-$var reg 32 $ incrin [31:0] $end
-$var reg 32 % memaddr [31:0] $end
+$var wire 1 " memact $end
+$var wire 32 # memaddr [31:0] $end
+$var wire 1 $ memldr $end
+$var wire 1 % memstr $end
+$var wire 32 & memvalin [31:0] $end
+$var wire 32 ' memvalout [31:0] $end
+$var wire 32 ( incrout [31:0] $end
+$var reg 32 ) incrin [31:0] $end
 $scope module incrementermodule $end
-$var wire 32 & in [31:0] $end
-$var wire 32 ' out [31:0] $end
+$var wire 32 * in [31:0] $end
+$var wire 32 + out [31:0] $end
 $upscope $end
 $scope module memory $end
-$var wire 32 ( address [31:0] $end
-$var wire 32 ) outvalue [31:0] $end
-$var integer 32 * i [31:0] $end
+$var wire 1 " act $end
+$var wire 32 , address [31:0] $end
+$var wire 1 ! clk $end
+$var wire 1 $ ldr $end
+$var wire 1 % str $end
+$var wire 32 - valin [31:0] $end
+$var reg 32 . valout [31:0] $end
+$var integer 32 / i [31:0] $end
 $upscope $end
 $upscope $end
 $upscope $end
 $enddefinitions $end
 #0
 $dumpvars
-b1010 *
+b1010 /
+bx .
+bz -
+bz ,
+bx +
+bx *
 bx )
 bx (
 bx '
-bx &
-bx %
-bx $
-bx #
-bx "
+bz &
+0%
+0$
+bz #
+0"
 0!
 $end
 #10000
@@ -20042,10 +20056,10 @@ $end
 0!
 #100010000
 1!
-b1 #
-b1 '
-b0 $
-b0 &
+b1 (
+b1 +
+b0 )
+b0 *
 #100020000
 0!
 #100030000
@@ -40046,10 +40060,10 @@ b0 &
 0!
 #200010000
 1!
-b10 #
-b10 '
-b1 $
-b1 &
+b10 (
+b10 +
+b1 )
+b1 *
 #200020000
 0!
 #200030000
@@ -60050,10 +60064,10 @@ b1 &
 0!
 #300010000
 1!
-b11 #
-b11 '
-b10 $
-b10 &
+b11 (
+b11 +
+b10 )
+b10 *
 #300020000
 0!
 #300030000
@@ -80054,10 +80068,10 @@ b10 &
 0!
 #400010000
 1!
-b100 #
-b100 '
-b11 $
-b11 &
+b100 (
+b100 +
+b11 )
+b11 *
 #400020000
 0!
 #400030000
@@ -100058,10 +100072,10 @@ b11 &
 0!
 #500010000
 1!
-b101 #
-b101 '
-b100 $
-b100 &
+b101 (
+b101 +
+b100 )
+b100 *
 #500020000
 0!
 #500030000
@@ -120062,10 +120076,10 @@ b100 &
 0!
 #600010000
 1!
-b110 #
-b110 '
-b101 $
-b101 &
+b110 (
+b110 +
+b101 )
+b101 *
 #600020000
 0!
 #600030000
@@ -140066,10 +140080,10 @@ b101 &
 0!
 #700010000
 1!
-b111 #
-b111 '
-b110 $
-b110 &
+b111 (
+b111 +
+b110 )
+b110 *
 #700020000
 0!
 #700030000
@@ -160070,10 +160084,10 @@ b110 &
 0!
 #800010000
 1!
-b1000 #
-b1000 '
-b111 $
-b111 &
+b1000 (
+b1000 +
+b111 )
+b111 *
 #800020000
 0!
 #800030000
@@ -180074,10 +180088,10 @@ b111 &
 0!
 #900010000
 1!
-b1001 #
-b1001 '
-b1000 $
-b1000 &
+b1001 (
+b1001 +
+b1000 )
+b1000 *
 #900020000
 0!
 #900030000

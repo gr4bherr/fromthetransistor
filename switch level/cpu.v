@@ -3,38 +3,21 @@
 `define PC 4'd15
 
 
-module ram(
-  input clk, 
-  input [31:0] address, 
-  input act,
-  input ldr,
-  input str,
-  input [31:0] valin, 
-  output reg [31:0] valout
-  );
-
+module ram(input [31:0] address, output [31:0] outvalue);
   reg [31:0] mem [0:63];
   integer i;
 
   initial begin
     $display("**** RAM ****");
-    // initial store into memory
+    // initial load into memory
     $readmemh("assout.txt",mem);
     // memmory display
     for (i=0;i<10;i=i+1) begin
       $display("M: %0h %h",i , mem[i]);
     end
-
   end
 
-  always @(posedge clk) begin
-    if (act == 1) begin
-      // load 
-      if (ldr == 1) valout <= mem[address];
-      // store
-      if (str == 1) mem[address] <= valin;
-    end
-  end
+  assign outvalue = mem[address];
 endmodule
 
 module incrementer(input [31:0] in, output [31:0] out);
@@ -51,26 +34,12 @@ endmodule
 module cpu(input clk);
   reg [31:0] regs [15:0]; // 16 32-bit registers
 
-  // ram
-  wire [31:0] memaddr;
-  wire [31:0] memvalin;
-  wire [31:0] memvalout;
-  wire memact = 0;
-  wire memldr = 0;
-  wire memstr = 0;
-  reg [31:0] memout;
-  // incrementer
+  reg [31:0] memaddr;
+  wire [31:0] memval;
   reg [31:0] incrin;
   wire [31:0] incrout;
 
-  ram memory(
-    .clk (clk), 
-    .address (memaddr), 
-    .act (memact), 
-    .ldr (memldr),
-    .str (memstr),
-    .valin (memvalin), 
-    .valout (memvalout));
+  ram memory(.address (memaddr), .outvalue (memval));
   incrementer incrementermodule(.in (incrin), .out (incrout));
 
 
