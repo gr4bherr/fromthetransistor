@@ -91,8 +91,7 @@ def alu(opcode, s, dest, op1, op2):
   elif opcode == 12: res = op1 | op2 # ORR
   elif opcode == 13: res = op2 # MOV
   elif opcode == 14: res = op1 & ~op2 # BIC
-  elif opcode == 15: #MVN
-    res = ~op2
+  elif opcode == 15: res = ~op2 # MVN
   # format
   res = totwoscomp(res)
   bop1 = f"{op1:032b}"
