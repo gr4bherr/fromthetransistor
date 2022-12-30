@@ -9,18 +9,48 @@
 `define C 4'b0010
 `define V 4'b0001
 
-module ram(
-  input clk, 
-  input [31:0] address, 
-  input act,
-  input ldr,
-  input str,
-  input [31:0] valin, 
-  output reg [31:0] valout
-  );
+// **** MODULES **** 
+module registerBank(
+  input clk,
+  input load, // if register is to be written
+  input [4:0] select, // selects, which register is to be written (TAKES EFFECT ONLY WHEN regload = 1)
+  input [31:0] datain, // data that is to be written
+  output [31:0] dataout0, output [31:0] dataout1, output [31:0] dataout2, output [31:0] dataout3,
+  output [31:0] dataout4, output [31:0] dataout5, output [31:0] dataout6, output [31:0] dataout7,
+  output [31:0] dataout8, output [31:0] dataout9, output [31:0] dataout10, output [31:0] dataout11,
+  output [31:0] dataout12, output [31:0] dataout13, output [31:0] dataout14, output [31:0] dataout15,
+  output [31:0] dataout16 // cpsr
+);
+  // 16 base registers + cpsr
+  reg [31:0] regs [0:16];
+  assign dataout0 = regs[0]; assign dataout1 = regs[1]; assign dataout2 = regs[2]; assign dataout3 = regs[3];
+  assign dataout4 = regs[4]; assign dataout5 = regs[5]; assign dataout6 = regs[6]; assign dataout7 = regs[7];
+  assign dataout8 = regs[8]; assign dataout9 = regs[9]; assign dataout10 = regs[10]; assign dataout11 = regs[11];
+  assign dataout12 = regs[12]; assign dataout13 = regs[13]; assign dataout14 = regs[14]; assign dataout15 = regs[15];
+  assign dataout16 = regs[16];
+  
+  initial begin
+    regs[`CPSR] <= 32'b111010011;
+  end
 
-  reg [31:0] mem [0:63];
+  always @(posedge clk) begin
+    if (load) begin
+      regs[select] <= datain;
+    end
+  end 
+endmodule
+
+module memory(
+  input clk,
+  input load, 
+  input [31:0] address,
+  input [31:0] datain,
+  output [31:0] dataout
+);
+  reg [31:0] mem [0:63]; // 64 * 4 bytes
   integer i;
+  // load
+  assign dataout = mem[address];
 
   initial begin
     $display("**** RAM ****");
@@ -30,15 +60,11 @@ module ram(
     for (i=0;i<10;i=i+1) begin
       $display("M: %0h %h",i , mem[i]);
     end
-
   end
 
   always @(posedge clk) begin
-    if (act == 1) begin
-      // load 
-      if (ldr == 1) valout <= mem[address];
-      // store
-      if (str == 1) mem[address] <= valin;
+    if (load) begin 
+      mem[address] <= datain;
     end
   end
 endmodule
@@ -82,33 +108,6 @@ module alu(
   end
 endmodule
 
-module registerbank(
-  input clk,
-  input regwrite, // if register is to be written
-  input [4:0] regselect, // selects, which register is to be written (TAKES EFFECT ONLY WHEN REGWRITE = 1)
-  input [31:0] datain, // data that is to be written
-  output [31:0] dataout0, output [31:0] dataout1, output [31:0] dataout2, output [31:0] dataout3,
-  output [31:0] dataout4, output [31:0] dataout5, output [31:0] dataout6, output [31:0] dataout7,
-  output [31:0] dataout8, output [31:0] dataout9, output [31:0] dataout10, output [31:0] dataout11,
-  output [31:0] dataout12, output [31:0] dataout13, output [31:0] dataout14, output [31:0] dataout15,
-  output [31:0] dataout16 // cpsr
-);
-  // 16 base registers + cpsr
-  reg [31:0] regs [0:16];
-
-  assign dataout0 = regs[0]; assign dataout1 = regs[1]; assign dataout2 = regs[2]; assign dataout3 = regs[3];
-  assign dataout4 = regs[4]; assign dataout5 = regs[5]; assign dataout6 = regs[6]; assign dataout7 = regs[7];
-  assign dataout8 = regs[8]; assign dataout9 = regs[9]; assign dataout10 = regs[10]; assign dataout11 = regs[11];
-  assign dataout12 = regs[12]; assign dataout13 = regs[13]; assign dataout14 = regs[14]; assign dataout15 = regs[15];
-  assign dataout16 = regs[16];
-
-  always @(posedge clk) begin
-    if (regwrite) begin
-      regs[regselect] <= datain;
-    end
-  end 
-
-endmodule
 
 
 module instructiondecoder(
@@ -139,22 +138,19 @@ module cpu(input clk);
   reg [7:0] clkcycle = 0;
 
   // **** MODULES ****
-  // ram
-  wire [31:0] memaddr;
-  wire [31:0] memvalin;
-  wire [31:0] memvalout;
-  wire memact = 0;
-  wire memldr = 0;
-  wire memstr = 0;
-  reg [31:0] memout;
+  // register bank
+  reg regload;
+  reg [4:0] regselect;
+  reg [31:0] regdatain;
+  wire [31:0] regdataout [0:16];
+  // memory
+  reg memload;
+  reg [31:0] memaddress;
+  reg [31:0] memdatain;
+  wire [31:0] memdataout;
   // address incrementer
   reg [31:0] incrin;
   wire [31:0] incrout;
-  // register bank
-  reg rregwrite;
-  reg [4:0] rregselect;
-  reg [31:0] rdatain;
-  wire [31:0] rdataout [0:16];
 
   initial begin
     $display("**** CPU ****");
@@ -164,57 +160,58 @@ module cpu(input clk);
     //regsvalin <= 2;
   end
 
-  // moudle init
-  ram memory(
+  // module init
+  registerBank registers(
+    .clk (clk),
+    .load (regload),
+    .select (regselect), 
+    .datain (regdatain),
+    .dataout0 (regdataout[0]), .dataout1 (regdataout[1]), .dataout2 (regdataout[2]), .dataout3 (regdataout[3]),
+    .dataout4 (regdataout[4]), .dataout5 (regdataout[5]), .dataout6 (regdataout[6]), .dataout7 (regdataout[7]),
+    .dataout8 (regdataout[8]), .dataout9 (regdataout[9]), .dataout10 (regdataout[10]), .dataout11 (regdataout[11]),
+    .dataout12 (regdataout[12]), .dataout13 (regdataout[13]), .dataout14 (regdataout[14]), .dataout15 (regdataout[15]),
+    .dataout16 (regdataout[16]));
+  memory mem(
     .clk (clk), 
-    .address (memaddr), 
-    .act (memact), 
-    .ldr (memldr),
-    .str (memstr),
-    .valin (memvalin), 
-    .valout (memvalout));
+    .load (memload), 
+    .address (memaddress), 
+    .datain (memdatain), 
+    .dataout (memdataout));
   addressincrementer adrincr(
     .clk (clk), 
     .in (incrin), 
     .out (incrout));
-  registerbank registers(
-    .clk (clk),
-    .regwrite (rregwrite),
-    .regselect (rregselect), 
-    .datain (rdatain),
-    .dataout0 (rdataout[0]), .dataout1 (rdataout[1]), .dataout2 (rdataout[2]), .dataout3 (rdataout[3]),
-    .dataout4 (rdataout[4]), .dataout5 (rdataout[5]), .dataout6 (rdataout[6]), .dataout7 (rdataout[7]),
-    .dataout8 (rdataout[8]), .dataout9 (rdataout[9]), .dataout10 (rdataout[10]), .dataout11 (rdataout[11]),
-    .dataout12 (rdataout[12]), .dataout13 (rdataout[13]), .dataout14 (rdataout[14]), .dataout15 (rdataout[15]),
-    .dataout16 (rdataout[16]));
 
   // **** BEGIN **** 
   always @ (posedge clk) begin
     #100_000
     $display("clock ", clkcycle);
-    //$display("pc: ", "%0h", regs[`PC]);
-    //memaddr <= 1;
-    //$display("%h", memval);
-    //memaddr <= 2;
-    //$display("%h", memval);
-
     //$display("cond:","%b",mem[0][31:28]);
-
-    //regs[`PC] <= regs[`PC] + 4;
-
 
     //incrin = regs[`PC];
     //regs[`PC] = incrout;
 
     if (clkcycle == 1) begin
-      rregwrite <= 1;
-      rregselect <= 3;
-      rdatain <= 69;
+      regselect <= 3;
+      regdatain <= 69;
+      regload <= 1;
     end
     if (clkcycle == 2) begin
-      $display("this", rdataout[3]);
+      $display("reg", regdataout[3]);
     end
       
+    if (clkcycle == 3) begin
+      memaddress <= 4;
+    end
+    if (clkcycle == 4) begin
+      $display("%h", memdataout);
+      memdatain <= 44;
+      memaddress <= 4;
+      memload <= 1;
+    end
+    if (clkcycle == 5) begin
+      $display("mem", memdataout);
+    end
 
 
 
