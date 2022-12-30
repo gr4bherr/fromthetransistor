@@ -10,7 +10,8 @@ module cpuTB();
     $display("**** TESTBENCH ****");
     $dumpfile("cpu.vcd");
     $dumpvars(0);
-    #1_000_000 // 1ms
+    //#1_000_000 // 1ms
+    #200 // 200ns
     $finish;
   end
 endmodule
