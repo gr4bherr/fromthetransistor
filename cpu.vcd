@@ -1,5 +1,5 @@
 $date
-	Fri Dec 30 15:14:40 2022
+	Sat Dec 31 07:27:51 2022
 $end
 $version
 	Icarus Verilog
@@ -14,60 +14,76 @@ $var wire 32 # datain2 [31:0] $end
 $var wire 4 $ op [3:0] $end
 $var reg 32 % dataout [31:0] $end
 $upscope $end
+$scope module barrelShifter $end
+$var wire 1 & clk $end
+$var wire 32 ' datain [31:0] $end
+$var reg 32 ( dataout [31:0] $end
+$upscope $end
 $scope module cpuTB $end
-$var reg 1 & clk $end
+$var reg 1 ) clk $end
 $scope module arm7tdmi $end
-$var wire 1 & clk $end
-$var wire 32 ' instruction [31:0] $end
-$var wire 32 ( memaddress [31:0] $end
-$var wire 32 ) memdataout [31:0] $end
-$var reg 32 * memdatain [31:0] $end
-$var reg 1 + memload $end
-$var reg 32 , regdatain [31:0] $end
-$var reg 1 - regload $end
-$var reg 5 . regselect [4:0] $end
+$var wire 1 ) clk $end
+$var wire 32 * instruction [31:0] $end
+$var wire 32 + memaddress [31:0] $end
+$var wire 32 , memdataout [31:0] $end
+$var reg 32 - memdatain [31:0] $end
+$var reg 1 . memload $end
+$var reg 32 / regdatain [31:0] $end
+$var reg 1 0 regload $end
+$var reg 5 1 regselect [4:0] $end
 $scope module decode $end
-$var wire 1 & clk $end
-$var wire 32 / instr [31:0] $end
-$var wire 32 0 pc [31:0] $end
-$var reg 4 1 cond [3:0] $end
+$var wire 1 ) clk $end
+$var wire 32 2 fetchedInstr [31:0] $end
+$var reg 32 3 ins [31:0] $end
 $upscope $end
 $scope module mem $end
-$var wire 32 2 address [31:0] $end
-$var wire 1 & clk $end
-$var wire 32 3 datain [31:0] $end
-$var wire 32 4 dataout [31:0] $end
-$var wire 1 + load $end
-$var integer 32 5 i [31:0] $end
+$var wire 32 4 address [31:0] $end
+$var wire 1 ) clk $end
+$var wire 32 5 datain [31:0] $end
+$var wire 32 6 dataout [31:0] $end
+$var wire 1 . load $end
+$var integer 32 7 i [31:0] $end
 $upscope $end
 $scope module registers $end
-$var wire 1 & clk $end
-$var wire 32 6 datain [31:0] $end
-$var wire 32 7 dataout0 [31:0] $end
-$var wire 32 8 dataout1 [31:0] $end
-$var wire 32 9 dataout10 [31:0] $end
-$var wire 32 : dataout11 [31:0] $end
-$var wire 32 ; dataout12 [31:0] $end
-$var wire 32 < dataout13 [31:0] $end
-$var wire 32 = dataout14 [31:0] $end
-$var wire 32 > dataout15 [31:0] $end
-$var wire 32 ? dataout16 [31:0] $end
-$var wire 32 @ dataout2 [31:0] $end
-$var wire 32 A dataout3 [31:0] $end
-$var wire 32 B dataout4 [31:0] $end
-$var wire 32 C dataout5 [31:0] $end
-$var wire 32 D dataout6 [31:0] $end
-$var wire 32 E dataout7 [31:0] $end
-$var wire 32 F dataout8 [31:0] $end
-$var wire 32 G dataout9 [31:0] $end
-$var wire 1 - load $end
-$var wire 5 H select [4:0] $end
+$var wire 1 ) clk $end
+$var wire 32 8 datain [31:0] $end
+$var wire 32 9 dataout0 [31:0] $end
+$var wire 32 : dataout1 [31:0] $end
+$var wire 32 ; dataout10 [31:0] $end
+$var wire 32 < dataout11 [31:0] $end
+$var wire 32 = dataout12 [31:0] $end
+$var wire 32 > dataout13 [31:0] $end
+$var wire 32 ? dataout14 [31:0] $end
+$var wire 32 @ dataout15 [31:0] $end
+$var wire 32 A dataout16 [31:0] $end
+$var wire 32 B dataout2 [31:0] $end
+$var wire 32 C dataout3 [31:0] $end
+$var wire 32 D dataout4 [31:0] $end
+$var wire 32 E dataout5 [31:0] $end
+$var wire 32 F dataout6 [31:0] $end
+$var wire 32 G dataout7 [31:0] $end
+$var wire 32 H dataout8 [31:0] $end
+$var wire 32 I dataout9 [31:0] $end
+$var wire 1 0 load $end
+$var wire 5 J select [4:0] $end
 $upscope $end
 $upscope $end
+$upscope $end
+$scope module multiplier $end
+$var wire 1 K clk $end
+$var wire 32 L datain1 [31:0] $end
+$var wire 8 M datain2 [7:0] $end
+$var reg 32 N dataout [31:0] $end
 $upscope $end
 $enddefinitions $end
 #0
 $dumpvars
+bx N
+bz M
+bz L
+zK
+bx J
+bx I
 bx H
 bx G
 bx F
@@ -75,34 +91,34 @@ bx E
 bx D
 bx C
 bx B
-bx A
-bx @
-b111010011 ?
-b0 >
+b111010011 A
+b0 @
+bx ?
+bx >
 bx =
 bx <
 bx ;
 bx :
 bx 9
 bx 8
-bx 7
-bx 6
-b1010 5
-b11100011101000000111111100000110 4
+b1010 7
+b11100011101000000111111100000110 6
+bx 5
+b0 4
 bx 3
-b0 2
+b11100011101000000111111100000110 2
 bx 1
-b0 0
-b11100011101000000111111100000110 /
-bx .
-x-
-bx ,
-x+
-bx *
-b11100011101000000111111100000110 )
-b0 (
-b11100011101000000111111100000110 '
-0&
+x0
+bx /
+x.
+bx -
+b11100011101000000111111100000110 ,
+b0 +
+b11100011101000000111111100000110 *
+0)
+bx (
+bz '
+z&
 bx %
 bz $
 bz #
@@ -110,108 +126,103 @@ bz "
 z!
 $end
 #10000
-b11100011101000000101111100000111 '
-b11100011101000000101111100000111 /
-b11100011101000000101111100000111 )
-b11100011101000000101111100000111 4
-b100 (
-b100 2
-b100 0
-b100 >
-b1110 1
-1&
+b11100011101000000101111100000111 *
+b11100011101000000101111100000111 2
+b11100011101000000101111100000111 ,
+b11100011101000000101111100000111 6
+b100 +
+b100 4
+b100 @
+b11100011101000000111111100000110 3
+1)
 #20000
-0&
+0)
 #30000
-b11100011101000000100111100000100 '
-b11100011101000000100111100000100 /
-b11100011101000000100111100000100 )
-b11100011101000000100111100000100 4
-b1000 (
-b1000 2
-b1000 0
-b1000 >
-1&
+b11100011101000000101111100000111 3
+b11100011101000000100111100000100 *
+b11100011101000000100111100000100 2
+b11100011101000000100111100000100 ,
+b11100011101000000100111100000100 6
+b1000 +
+b1000 4
+b1000 @
+1)
 #40000
-0&
+0)
 #50000
-b11100011101000000010000000000011 '
-b11100011101000000010000000000011 /
-b11100011101000000010000000000011 )
-b11100011101000000010000000000011 4
-b1100 (
-b1100 2
-b1100 0
-b1100 >
-1&
+b11100011101000000010000000000011 *
+b11100011101000000010000000000011 2
+b11100011101000000010000000000011 ,
+b11100011101000000010000000000011 6
+b1100 +
+b1100 4
+b1100 @
+b11100011101000000100111100000100 3
+1)
 #60000
-0&
+0)
 #70000
-b11100000010001010100001000110111 '
-b11100000010001010100001000110111 /
-b11100000010001010100001000110111 )
-b11100000010001010100001000110111 4
-b10000 (
-b10000 2
-b10000 0
-b10000 >
-1&
+b11100011101000000010000000000011 3
+b11100000010001010100001000110111 *
+b11100000010001010100001000110111 2
+b11100000010001010100001000110111 ,
+b11100000010001010100001000110111 6
+b10000 +
+b10000 4
+b10000 @
+1)
 #80000
-0&
+0)
 #90000
-b11100000010001010100001000000111 '
-b11100000010001010100001000000111 /
-b11100000010001010100001000000111 )
-b11100000010001010100001000000111 4
-b10100 (
-b10100 2
-b10100 0
-b10100 >
-1&
+b11100000010001010100001000000111 *
+b11100000010001010100001000000111 2
+b11100000010001010100001000000111 ,
+b11100000010001010100001000000111 6
+b10100 +
+b10100 4
+b10100 @
+b11100000010001010100001000110111 3
+1)
 #100000
-0&
+0)
 #110000
-bx '
-bx /
-bx )
-bx 4
-b11000 (
-b11000 2
-b11000 0
-b11000 >
-1&
+b11100000010001010100001000000111 3
+bx *
+bx 2
+bx ,
+bx 6
+b11000 +
+b11000 4
+b11000 @
+1)
 #120000
-0&
+0)
 #130000
-b11100 (
-b11100 2
-b11100 0
-b11100 >
-bx 1
-1&
+b11100 +
+b11100 4
+b11100 @
+bx 3
+1)
 #140000
-0&
+0)
 #150000
-b100000 (
-b100000 2
-b100000 0
-b100000 >
-1&
+b100000 +
+b100000 4
+b100000 @
+1)
 #160000
-0&
+0)
 #170000
-b100100 (
-b100100 2
-b100100 0
-b100100 >
-1&
+b100100 +
+b100100 4
+b100100 @
+1)
 #180000
-0&
+0)
 #190000
-b101000 (
-b101000 2
-b101000 0
-b101000 >
-1&
+b101000 +
+b101000 4
+b101000 @
+1)
 #200000
-0&
+0)

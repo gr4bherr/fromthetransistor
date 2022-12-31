@@ -72,26 +72,82 @@ endmodule
 // **** DECODE ****
 module instructionDecoder(
   input clk,
-  input [31:0] pc, 
-  input [31:0] instr
+  input [31:0] fetchedInstr
 );
-  reg [3:0] cond;
+  reg [31:0] ins; // instruction to decode
+  //reg [3:0] cond;
 
   always @(posedge clk) begin
-    $display("decoding: %h", instr);
-    cond <= instr[31:28];
+    ins <= fetchedInstr; 
+    $display("decoding: %h", ins);
+
+    if (ins[31:28] != 4'b1111) begin // if condition valid
+      //todo case (ins[27:26])
+      if (ins[27:26] == 2'b00) begin
+          if (ins[25] == 1'b0) begin
+            // DATA PROCESSING: reg {shift} (1/2)
+            if (!(ins[24:23] == 2'b10 & ins[20] == 1'b0) & ((ins[4] == 1'b0) | (ins[7] == 1'b0 & ins[4] == 1'b1))) begin
+              $display("insnum: 0");
+            end else if ((ins[24:23] == 2'b10 & ins[20] == 1'b0) & (ins[7] == 1'b0)) begin
+              // PSR TRANSFER: mrs reg, msr reg (1/2)
+              if (ins[6:4] == 3'b000) begin
+                $display("insnum: 1");
+              // BRANCH AND EXCHANGE
+              end else if (ins[6:4] == 3'b001 & ins[22:21] == 2'b01) begin
+                $display("insnum: 5");
+              end 
+            end else if (ins[24] == 1'b0 & ins[7:4] == 4'b1001) begin
+              // MULTIPLY
+              if (ins[23:22] == 2'b00) begin
+                $display("insnum: 2");
+              // MULTIPLY LONG
+              end else if (ins[23] == 1'b1) begin
+                $display("insnum: 3");
+              end
+            // HALF WORD DATA TRANSFER
+            end else if (!(ins[24] == 1'b0 & ins[21] == 1'b1) | (ins[24] == 1'b0 & ins[21:20] == 2'b10) & (ins[7:4] == 4'b1011 | ins[7:4] == 4'b1101 | ins[7:4] == 4'b1111)) begin
+              $display("insnum: 6 or 7");
+            // SINGLE DATA SWAP
+            end else if (((ins[24:23] == 2'b10 & ins[21:20] == 2'b00) & ins[10:4] == 8'b00001001)) begin
+              $display("insnum: 4");
+            end
+          end else if (ins[25] == 1'b1) begin
+            // DATA PROCESSING: imm (2/2)
+            if (!(ins[24:23] == 2'b10 & ins[20] == 1'b0)) begin 
+              $display("insnum: 0");
+            // PSR TRANSFER: msr imm (2/2)
+            end else if (ins[24:23] == 2'b10 & ins[21:20] == 2'b10) begin 
+              $display("insnum: 1");
+            end
+          end
+      // SINGLE DATA TRANSFER 
+      end else if (ins[27:26] == 2'b01) begin
+        //todo
+        $display("insnum: 8");
+      end else if (ins[27:26] == 2'b10) begin
+          // BLOCK DATA TRANSFER
+          if (ins[25] == 1'b0) begin
+            $display("insnum: a");
+          // BRANCH
+          end else if (ins[25] == 1'b1) begin
+            $display("insnum: b");
+          end
+      end else if (ins[27:26] == 2'b11) begin
+        // UNDEFINED
+        if (ins[25:21] == 5'b00000) begin
+          $display("insnum: 9");
+        // SOFTWARE INTERRUPT
+        end else if (ins[25:20] == 6'b110000) begin
+          $display("insnum: f");
+        end 
+        // COPROCESSOR...
+      end else begin
+          // not valid instruction
+          $display("invalid instruction");
+      end
+    end
   end
 endmodule
-
-// 11100011101000000111111100000110
-// 11100011101000000101111100000111
-// 11100011101000000100111100000100
-// 11100011101000000010000000000011
-// 11100000010001010100001000110111
-// 11100000010001010100001000000111
-
-
-
 
 
 // **** EXECUTE ****
@@ -105,8 +161,8 @@ module alu(
 );
   always @(posedge clk) begin
     case (op)
-      1: dataout = datain1 & datain2; // AND
-      1: dataout = datain1 & datain2; // EOR
+      0: dataout = datain1 & datain2; // AND
+      1: dataout = datain1 ^ datain2; // EOR
       2: dataout = datain1 - datain2; // SUB
       3: dataout = datain2 - datain1; // RSB
       4: dataout = datain1 + datain2; // ADD
@@ -125,8 +181,27 @@ module alu(
   end
 endmodule
 
+module multiplier(
+  input clk,
+  input [31:0] datain1,
+  input [7:0] datain2,
+  output reg [31:0] dataout
+);
+  always @(posedge clk) begin
+    // assign?
+    dataout <= datain1 * datain2;
+  end
+endmodule
+
+module barrelShifter(
+  input clk,
+  input [31:0] datain,
+  output reg [31:0] dataout
+);
+endmodule
 
 
+// todo ram shouldnt be within cpu, should it now
 // **** CPU ****
 module cpu(input clk);
   // ** MODULES **
@@ -160,13 +235,11 @@ module cpu(input clk);
   wire [31:0] instruction;
   instructionDecoder decode(
     .clk (clk),
-    .pc (regdataout[15]),
-    .instr (instruction)
+    .fetchedInstr (instruction)
   );
 
   // ** FETCH **
   assign memaddress = regdataout[`PC];
-
   // ** DECODE **
   assign instruction = memdataout;
   // ** EXECUTE **

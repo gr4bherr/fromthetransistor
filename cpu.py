@@ -200,28 +200,25 @@ def decode(ins):
         if not re.match("10..0", ins[7:12]) and (re.match("...0", ins[24:28]) or re.match("0..1", ins[24:28])):
           return {"insnum": 0x0, "i": int(ins[6], 2), "opcode": int(ins[7:11], 2), "s": int(ins[11]), "rn": regs[int(ins[12:16], 2)], "rd": int(ins[16:20], 2), "shiftam": int(ins[20:25], 2), "shift": int(ins[25:27], 2), "t": int(ins[27], 2), "rm": regs[int(ins[28:], 2)]}
         elif re.match("10..0", ins[7:12]) and re.match("0...", ins[24:28]):
-          if re.match("0...", ins[24:28]):
-            # PSR TRANSFER: mrs reg, msr reg (1/2)
-            if ins[25:28] == "000":
-              return {"insnum": 0x1, "i": int(ins[6]), "psr": int(ins[9], 2), "direction": int(ins[10], 2), "rd": int(ins[16:20], 2), "rm": regs[int(ins[28:], 2)]}
-            elif ins[25:28] == "001":
-              # BRANCH AND EXCHANGE
-              if ins[9:11] == "01":
-                return {"insnum": 0x5, "rn": regs[int(ins[28:], 2)]}
+          # PSR TRANSFER: mrs reg, msr reg (1/2)
+          if ins[25:28] == "000":
+            return {"insnum": 0x1, "i": int(ins[6]), "psr": int(ins[9], 2), "direction": int(ins[10], 2), "rd": int(ins[16:20], 2), "rm": regs[int(ins[28:], 2)]}
+          # BRANCH AND EXCHANGE
+          elif ins[25:28] == "001" and ins[9:11] == "01":
+            return {"insnum": 0x5, "rn": regs[int(ins[28:], 2)]}
         elif re.match("0....", ins[7:12]) and re.match("1001", ins[24:28]):
-          if ins[24:28] == "1001":
-            # MULTIPLY
-            if re.match("00..", ins[8:12]):
-              return {"insnum": 0x2, "a": int(ins[10], 2), "s": int(ins[11], 2), "rd": int(ins[12:16], 2), "rn": regs[int(ins[16:20], 2)], "rs": regs[int(ins[20:24], 2)], "rm": regs[int(ins[28:], 2)]}
-            # MULTIPLY LONG
-            elif re.match("1...", ins[8:12]):
-              return {"insnum": 0x3, "u": int(ins[9], 2), "a": int(ins[10], 2), "s": int(ins[11], 2), "rdhi": int(ins[12:16], 2), "rdlo": int(ins[16:20], 2), "rs": regs[int(ins[20:24], 2)], "rm": regs[int(ins[28:], 2)]}
+          # MULTIPLY
+          if re.match("00..", ins[8:12]):
+            return {"insnum": 0x2, "a": int(ins[10], 2), "s": int(ins[11], 2), "rd": int(ins[12:16], 2), "rn": regs[int(ins[16:20], 2)], "rs": regs[int(ins[20:24], 2)], "rm": regs[int(ins[28:], 2)]}
+          # MULTIPLY LONG
+          elif re.match("1...", ins[8:12]):
+            return {"insnum": 0x3, "u": int(ins[9], 2), "a": int(ins[10], 2), "s": int(ins[11], 2), "rdhi": int(ins[12:16], 2), "rdlo": int(ins[16:20], 2), "rs": regs[int(ins[20:24], 2)], "rm": regs[int(ins[28:], 2)]}
         # HALF WORD DATA TRANSFER
-        elif (not re.match("0..1.", ins[7:12]) or re.match("0xx10", ins[7:12])) and (ins[24:28] in ["1011", "1101", "1111"]):
+        elif (not re.match("0..1.", ins[7:12]) or re.match("0..10", ins[7:12])) and (ins[24:28] in ["1011", "1101", "1111"]):
           # if i == 1 and l == 1 and rn == 1111 -> literal offset
           return {"p": int(ins[7], 2), "u": int(ins[8], 2), "i": int(ins[9], 2), "w": int(ins[10], 2), "l": int(ins[11], 2), "rn": int(ins[12:16], 2), "rd": int(ins[16:20], 2), "off1": ins[20:24], "sh": int(ins[25:27], 2), "off2": ins[28:] if i == 0 else regs[int(ins[28:], 2)], "insnum": 0x6 if i == 0 else 0x7}
         # SINGLE DATA SWAP
-        # 1110 00 0 10000 11110000000000000000
+        # 1110 00 0 10000 111100000 0000000 0000
         elif re.match("10.00", ins[7:12]) and ins[20:28] == "00001001":
           return {"insnum": 0x4, "b": int(ins[9], 2), "rn": regs[int(ins[12:16], 2)], "rd": regs[int(ins[16:20], 2)], "rm": regs[int(ins[28:], 2)]}
       elif ins[6] == "1":
