@@ -1,0 +1,6 @@
+add power 
+clk -> mclk
+alu no clk
+is bram dynamic?
+microinstruction counter
+my bad, atm7 is van neumann

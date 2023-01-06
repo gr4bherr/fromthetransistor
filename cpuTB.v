@@ -11,7 +11,7 @@ module cpuTB();
     $dumpfile("cpu.vcd");
     $dumpvars(0);
     //#1_000_000 // 1ms
-    #200 // 200ns
+    #500 // 200ns
     $finish;
   end
 endmodule
