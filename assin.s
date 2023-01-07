@@ -2,3 +2,17 @@ mov r7, #24
 mov r5, #28
 mov r4, #16
 mov r2, #3
+
+
+
+@ data processing
+ADDEQ R2, R4, R5
+TEQS R4, #3
+SUB R4,R5,R7,LSR R2
+SUB R4,R5,R7,LSL #4
+MOV PC, R14
+MOVS PC, R14
+SUB R4,R5,R7,LSL #4
+SUB R4,R5,R7,ASL #4
+ADD R2,R1,R3,ROR #3
+ADD R2,R1,R3,RRX

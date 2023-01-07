@@ -3,6 +3,45 @@
 // ./assembler.py assin.s && iverilog -o cpu.out cpuTB.v cpu.v && ./cpu.out
 
 `define PC 15
+`define CPSR 16
+
+`define N 31
+`define Z 30
+`define C 29
+`define V 28
+
+`define EQ 0
+`define NE 1
+`define CS 2
+`define CC 3
+`define MI 4
+`define PL 5
+`define VS 6
+`define VC 7
+`define HI 8
+`define LS 9
+`define GE 10
+`define LT 11
+`define GT 12
+`define LE 13
+`define AL 14
+
+`define AND 0
+`define EOR 1
+`define SUB 2
+`define RSB 3
+`define ADD 4
+`define ADC 5
+`define SBC 6
+`define RSC 7
+`define TST 8
+`define TEQ 9
+`define CMP 10
+`define CMN 11
+`define ORR 12
+`define MOV 13
+`define BIC 14
+`define MVN 15
 
 // CONTROL SIGNALS (ctrl)
 // todo reorder and clean up
@@ -22,12 +61,13 @@
 `define c_regin2 10
 `define c_regpcwrite 11
 `define c_memout 12
-`define c_ipipeout 13
-`define c_ipipein 14
+`define c_instructionRegisterout 13
+`define c_instructionRegisterin 14
 `define c_dataregin 15
 `define c_dataregout 16
 `define c_shiftbyimm 17
 `define c_shiftvalimm 18
+`define c_setflags 19
 
 
 module memory(
@@ -63,26 +103,31 @@ module addressRegister (
   input wire write,
   input wire in1on,
   input wire in2on,
+  input wire in3on,
   input wire out1on,
   //input wire out2on,
 
   input wire [31:0] in1, // alu bus 
   input wire [31:0] in2, // incrementer bus
-
+  input wire [31:0] in3, // pc bus 
+ 
   output wire [31:0] out1, // out to memory 
   output wire [31:0] out2 // out to address incrementer
 );
-
   reg [31:0] areg;
 
   // out
   assign out1 = out1on ? areg : 32'bz;
   assign out2 = areg;
 
-  always @ (posedge clk) begin
-    // write
+  // increment
+  always @ (negedge clk) begin
     if (in1on & write) areg <= in1;
-    else if (in2on & write) areg <= in2;
+  end
+  // write
+  always @ (posedge clk) begin
+    if (in2on & write) areg <= in2;
+    else if (in3on & write) areg <= in3;
   end
 
   initial begin
@@ -99,8 +144,22 @@ module addressIncrementer (
   assign dataout = increment ? datain + 4 : 32'bz;
 endmodule
 
+module dataRegister (
+  input clk,
+  input wire inon,
+  input wire outon,
+  input wire [31:0] datain,
+  output wire [31:0] dataout
+);
+  reg [31:0] datareg;
+  assign dataout = outon ? datareg : 32'bz;
+  always @ (posedge clk) begin
+    if (inon) datareg <= datain;
+  end
+endmodule
+
 //instruction pipeline & read data register (& thumb instruction decoder)
-module ipipe (
+module instructionRegister (
   input clk,
   input wire inon,
   input wire out1on,
@@ -118,26 +177,12 @@ module ipipe (
   end
 endmodule
 
-module writeDataRegister (
-  input clk,
-  input wire inon,
-  input wire outon,
-  input wire [31:0] datain,
-  output wire [31:0] dataout
-);
-  reg [31:0] datareg;
-  assign dataout = outon ? datareg : 32'bz;
-  always @ (posedge clk) begin
-    if (inon) datareg <= datain;
-  end
-endmodule
-
-
 
 module instructionDecoder (
   input wire [31:0] ins,
-  //output wire [31:0] instruction,
   output reg [31:0] control,
+
+  input wire [3:0] flags,
 
   output reg [31:0] shiftby,
   output reg [1:0] shifttype,
@@ -148,8 +193,17 @@ module instructionDecoder (
   output reg [3:0] rs,
   output reg [31:0] shiftval
 );
+
   always @ (ins) begin
-    if (ins[31:28] != 4'b1111) begin // if condition valid
+    // condition check
+    if ((ins[31:28] == `EQ & flags[`N]) | (ins[31:28] == `NE & ~flags[`Z]) | 
+        (ins[31:28] == `CS & flags[`C]) | (ins[31:28] == `CC & ~flags[`C]) | 
+        (ins[31:28] == `MI & flags[`N]) | (ins[31:28] == `PL & ~flags[`N]) | 
+        (ins[31:28] == `VS & flags[`V]) | (ins[31:28] == `VC & ~flags[`V]) |
+        (ins[31:28] == `HI & flags[`C] & ~flags[`Z]) | (ins[31:28] == `LS & ~flags[`C] & flags[`Z]) | 
+        (ins[31:28] == `GE & flags[`Z] == flags[`V]) | (ins[31:28] == `LT & flags[`Z] != flags[`V]) | 
+        (ins[31:28] == `GT & ~flags[`Z] & flags[`N] == flags[`V]) | (ins[31:28] == `LE & (flags[`Z] | flags[`N] != flags[`V])) | 
+        (ins[31:28] == `AL)) begin
       if (ins[27:26] == 2'b00) begin
           if (ins[25] == 1'b0) begin
             // DATA PROCESSING: reg {shift} (1/2) (i = 0)
@@ -158,6 +212,7 @@ module instructionDecoder (
               $display("\tinsnum: 0 (1/2)");
               // cycleone <= 'h0;
               opcode = ins[24:21];
+              control[`c_setflags] = ins[20];
               rn = ins[19:16];
               rd = ins[15:12];
               rm = ins[3:0];
@@ -212,9 +267,9 @@ module instructionDecoder (
               // i, opcode, s, rn, rd, rotate, imm
               // cycleone <= 0;
               opcode = ins[24:21];
+              control[`c_setflags] = ins[20];
               rn = ins[19:16];
               rd = ins[15:12];
-              $display(rd);
               shiftby = ins[11:8] * 2; // rotate by
               shifttype = 2'b11;
               shiftval = ins[7:0];
@@ -272,25 +327,32 @@ module registerBank (
   input wire in2on,
   input wire pcwrite,
   input wire writeback,
+  input wire cpsrwrite,
 
-  input wire [31:0] in1, // alu bus
-  input wire [31:0] in2, // incrementer bus
+  input wire [31:0] alubusin,
+  input wire [31:0] incrbusin,
   input wire [3:0] rm,
   input wire [3:0] rn,
   input wire [3:0] rs,
   input wire [3:0] rd,
-  output wire [31:0] out1, // a bus (rm)
-  output wire [31:0] out2, // b bus (rn)
-  output wire [31:0] out3 // shiftamountreg (rs)
+  input wire [3:0] updatedflags,
+  output wire [3:0] flags,
+  output wire [31:0] abusout, // rm
+  output wire [31:0] bbusout, // rn
+  output wire [31:0] barrelshifterout, // (rs) shiftamountreg 
+  output wire [31:0] pcbusout
 );
   // 16 base registers + cpsr
   reg [31:0] regs [0:16];
 
-  assign out1 = regs[rm];
-  assign out2 = regs[rn];
-  assign out3 = regs[rs];
+  assign flags = regs[`CPSR][31:28];
+  assign abusout = regs[rm];
+  assign bbusout = regs[rn];
+  assign barrelshifterout = regs[rs];
+  assign pcbusout = regs[`PC];
 
-  always @ (posedge clk) begin
+  // write on down edge
+  always @ (negedge clk) begin
     //$display(regs[`PC]);
     // todo
     //if (write) begin
@@ -298,9 +360,53 @@ module registerBank (
       //else if (in2on) regs[rn] <= in2;
     //end
 
-    //if (pcwrite) regs[`PC] <= in2;
-    if (writeback) regs[rd] <= in1;
-    $display("mov check", regs[2], regs[4], regs[5], regs[7]);
+    if (writeback) regs[rd] <= alubusin;
+    if (pcwrite & rd != `PC) regs[`PC] <= incrbusin;
+    if (cpsrwrite) regs[`CPSR] <= {updatedflags, regs[`CPSR][27:0]};
+  end
+
+  // set modes, my cpu doesn't care about them (just for fun)
+  initial begin
+    // FIQ disable, IRQ disable, T clear, mode: supervisor
+    regs[16] <= 32'b111010011; 
+  end
+
+  // just so i can see it gktwave
+  reg [31:0] reg0;
+  reg [31:0] reg1;
+  reg [31:0] reg2;
+  reg [31:0] reg3;
+  reg [31:0] reg4;
+  reg [31:0] reg5;
+  reg [31:0] reg6;
+  reg [31:0] reg7;
+  reg [31:0] reg8;
+  reg [31:0] reg9;
+  reg [31:0] reg10;
+  reg [31:0] reg11;
+  reg [31:0] reg12;
+  reg [31:0] reg13;
+  reg [31:0] reg14;
+  reg [31:0] reg15;
+  reg [31:0] reg16;
+  always @ (*) begin
+    reg0 = regs[0];
+    reg1 = regs[1];
+    reg2 = regs[2];
+    reg3 = regs[3];
+    reg4 = regs[4];
+    reg5 = regs[5];
+    reg6 = regs[6];
+    reg7 = regs[7];
+    reg8 = regs[8];
+    reg9 = regs[9];
+    reg10 = regs[10];
+    reg11 = regs[11];
+    reg12 = regs[12];
+    reg13 = regs[13];
+    reg14 = regs[14];
+    reg15 = regs[15];
+    reg16 = regs[16];
   end
 endmodule
 
@@ -335,14 +441,11 @@ module barrelShifter (
     case (type)
       0: begin 
         dataout = 32'b00;
-      end
-      1: begin 
+      end 1: begin 
         dataout =  32'b01;
-      end
-      2: begin 
+      end 2: begin 
         dataout = 32'b10;
-      end
-      3: begin 
+      end 3: begin 
         dataout = (val >> by) | (val << (width - by));
       end
     endcase
@@ -351,80 +454,97 @@ endmodule
 
 module alu (
   input wire [3:0] opcode,
+  input wire setflags,
   input wire [31:0] dataina,
   input wire [31:0] datainb,
+  input wire [3:0] cpsrin,
   output reg writeback,
-  output reg [31:0] dataout
+  output reg [31:0] dataout,
+  output reg [3:0] cpsrout
 );
   reg c = 0; // todo (flags)
 
   always @ (*) begin
     case (opcode)
-      0: begin
-        dataout = dataina & datainb; // and
+      `AND: begin
+        dataout = dataina & datainb;
         writeback = 1;
-      end
-      1: begin
-        dataout = dataina ^ datainb; // eor 
+      end `EOR: begin
+        dataout = dataina ^ datainb;
         writeback = 1;
-      end
-      2: begin
-        dataout = dataina - datainb; // sub
+      end `SUB: begin
+        dataout = dataina - datainb;
         writeback = 1;
-      end
-      3: begin 
-        dataout = datainb - dataina; // rsb
+      end `RSB: begin 
+        dataout = datainb - dataina;
         writeback = 1;
-      end
-      4: begin 
-        dataout = dataina + datainb; // add 
+      end `ADD: begin 
+        dataout = dataina + datainb;
         writeback = 1;
-      end
-      5: begin
-        dataout = dataina + datainb + c; // adc
+      end `ADC: begin
+        dataout = dataina + datainb + c;
         writeback = 1;
-      end
-      6: begin 
-        dataout = dataina - datainb + c; // sbc
+      end `SBC: begin 
+        dataout = dataina - datainb + c;
         writeback = 1;
-      end
-      7: begin
-        dataout = datainb - dataina + c; // rsc
+      end `RSC: begin
+        dataout = datainb - dataina + c;
         writeback = 1;
-      end
-      8: begin
-        dataout = dataina & datainb; // tst
+      end `TST: begin
+        dataout = dataina & datainb;
         writeback = 0;
-      end
-      9: begin
-        dataout = dataina ^ datainb; // teq
+      end `TEQ: begin
+        dataout = dataina ^ datainb;
         writeback = 0;
-      end
-      10: begin
-        dataout = dataina - datainb; // cmp
+      end `CMP: begin
+        dataout = dataina - datainb;
         writeback = 0;
-      end
-      11: begin
-        dataout = dataina + datainb; // cmn
+      end `CMN: begin
+        dataout = dataina + datainb;
         writeback = 0;
-      end
-      12: begin
-        dataout = dataina | datainb; // orr
+      end `ORR: begin
+        dataout = dataina | datainb;
         writeback = 1;
-      end
-      13: begin
-        dataout = datainb; // mov
+      end `MOV: begin
+        dataout = datainb;
         writeback = 1;
-      end
-      14: begin
-        dataout = dataina & ~datainb; // bic
+      end `BIC: begin
+        dataout = dataina & ~datainb;
         writeback = 1;
-      end
-      15: begin
-        dataout = ~datainb; // mvn
+      end `MVN: begin
+        dataout = ~datainb;
         writeback = 1;
       end
     endcase
+
+    // set flags
+    if (setflags | opcode == `TST | opcode == `TEQ | opcode == `CMP | opcode == `CMN) begin
+      // N
+      if (dataout[31] == 1) cpsrout = cpsrin | 4'b1000;
+      else cpsrout = cpsrin & 4'b0111;
+      // Z
+      if (dataout == 0) cpsrout = cpsrin | 4'b0100;
+      else cpsrout = cpsrin & 4'b1011;
+      // C
+      // sub
+      if (opcode == `SUB | opcode == `RSB | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
+        if (dataina < datainb) cpsrout = cpsrin | 4'b0010;
+        else cpsrout = cpsrin & 4'b1101;
+      end
+      // add 
+      if (opcode == `ADD | opcode == `ADC | opcode == `CMN) begin
+        if (dataina[31] == 1 & datainb[31] == 1) cpsrout = cpsrin | 4'b0010;
+        else cpsrout = cpsrin & 4'b1101;
+      end
+      // V
+      // sub or add
+      if (opcode == `SUB | opcode == `RSB | opcode == `ADD | opcode == `ADC | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
+        // signed overflow
+        if (dataina[31] == 0 & datainb[31] == 0 & dataout[31] == 1) cpsrout = cpsrin | 4'b0001;
+        else cpsrout = cpsrin & 4'b1110;
+      end
+    end
+
   end
 endmodule
 
@@ -442,6 +562,7 @@ module cpu (input clk);
   wire [31:0] bbusext;
   wire [31:0] incrinbus;
   wire [31:0] decodebus;
+  wire [31:0] pcbus;
 
 
   // MODULES
@@ -460,11 +581,13 @@ module cpu (input clk);
     .in1on (ctrl[`c_addrin1]),
     //.in2on (ctrl[`c_addrin2]),
     .in2on (1'b1),
+    .in3on (1'b1),
     //.out1on (ctrl[`c_addrout1]),
     .out1on (1'b1),
     //.out2on (c_addrout2),
     .in1 (alubus),
     .in2 (incrementerbus),
+    .in3 (pcbus),
     .out1 (addressbus),
     .out2 (incrinbus)
   );
@@ -474,7 +597,7 @@ module cpu (input clk);
     .datain (incrinbus),
     .dataout (incrementerbus)
   );
-  writeDataRegister writeDataRegisterModule (
+  dataRegister dataRegisterModule (
     .clk (clk),
     .inon (ctrl[`c_dataregin]),
     //.outon (ctrl[`c_dataregout]),
@@ -482,11 +605,11 @@ module cpu (input clk);
     .datain (bbus),
     .dataout (databus)
   );
-  ipipe ipipeModule (
+  instructionRegister instructionRegisterModule (
     .clk (clk),
-    //.inon (ctrl[`c_ipipein]),
+    //.inon (ctrl[`c_instructionRegisterin]),
     .inon (1'b1),
-    //.out1on (ctrl[`c_ipipeout]),
+    //.out1on (ctrl[`c_instructionRegisterout]),
     .out1on (1'b1),
     .datain (databus),
     .dataout1 (bbus),
@@ -505,6 +628,7 @@ module cpu (input clk);
     .ins (decodebus),
     //.instruction (instr),
     .control (ctrl),
+    .flags (cpsr),
     .shiftby (i_shiftby),
     .shifttype (i_shifttype),
     .opcode (i_opcode),
@@ -515,24 +639,26 @@ module cpu (input clk);
     .shiftval (i_shiftval)
   );
   wire [31:0] shiftbyreg;
+  wire [3:0] cpsr;
   registerBank registerBankModule (
     .clk (clk),
     .write (ctrl[`c_regwrite]),
-    //.in1on (ctrl[`c_regin1]),
-    .in1on (1'b1),
-    //.in2on (ctrl[`c_regin2]),
-    .in2on (1'b1),
-    .pcwrite (ctrl[`c_regpcwrite]),
+    //.pcwrite (ctrl[`c_regpcwrite]),
+    .pcwrite (1'b1),
+    .cpsrwrite (ctrl[`c_setflags]),
     .writeback (writebackalu),
-    .in1 (alubus),
-    .in2 (incrementerbus),
+    .alubusin (alubus),
+    .incrbusin (incrementerbus),
     .rm (i_rm),
     .rn (i_rn),
     .rs (i_rs),
     .rd (i_rd),
-    .out1 (abus),
-    .out2 (bbus),
-    .out3 (shiftbyreg)
+    .updatedflags (newcpsr),
+    .flags (cpsr),
+    .abusout (abus),
+    .bbusout (bbus),
+    .barrelshifterout (shiftbyreg),
+    .pcbusout (pcbus)
   );
   barrelShifter barrelShifterModule (
     .vimm (ctrl[`c_shiftvalimm]),
@@ -546,28 +672,23 @@ module cpu (input clk);
     .dataout (bbusext)
   );
   wire writebackalu;
+  wire [3:0] newcpsr;
   alu aluModule (
     .opcode (i_opcode),
+    .setflags (ctrl[`c_setflags]),
     .dataina (abus),
     .datainb (bbusext),
+    .cpsrin (cpsr),
     .writeback (writebackalu),
-    .dataout (alubus)
+    .dataout (alubus),
+    .cpsrout (newcpsr)
   );
 
-  // FOR TEST
+  // FOR TEST // todo
   reg [31:0] cycles = 0;
   always @ (posedge clk) begin
-    
-    case (cycles)
-      0: begin
-        $display("ha");
-      end
-    endcase
-
     #1
     $display("**** CYCLE: %0d ****\n", cycles);
     cycles <= cycles + 1;
   end
-
-
 endmodule
