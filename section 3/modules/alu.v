@@ -1,0 +1,95 @@
+module alu (
+  input wire [3:0] opcode,
+  input wire setflags,
+  input wire [31:0] dataina,
+  input wire [31:0] datainb,
+  input wire [3:0] cpsrin,
+  output reg writeback,
+  output reg [31:0] dataout,
+  output reg [3:0] cpsrout
+);
+  reg c = 0; // todo (flags)
+
+  always @ (*) begin
+    case (opcode)
+      `AND: begin
+        dataout = dataina & datainb;
+        writeback = 1;
+      end `EOR: begin
+        dataout = dataina ^ datainb;
+        writeback = 1;
+      end `SUB: begin
+        $display("sub", dataina, datainb,":", dataina-datainb);
+        dataout = dataina - datainb;
+        writeback = 1;
+      end `RSB: begin 
+        dataout = datainb - dataina;
+        writeback = 1;
+      end `ADD: begin 
+        dataout = dataina + datainb;
+        writeback = 1;
+      end `ADC: begin
+        dataout = dataina + datainb + c;
+        writeback = 1;
+      end `SBC: begin 
+        dataout = dataina - datainb + c;
+        writeback = 1;
+      end `RSC: begin
+        dataout = datainb - dataina + c;
+        writeback = 1;
+      end `TST: begin
+        dataout = dataina & datainb;
+        writeback = 0;
+      end `TEQ: begin
+        dataout = dataina ^ datainb;
+        writeback = 0;
+      end `CMP: begin
+        dataout = dataina - datainb;
+        writeback = 0;
+      end `CMN: begin
+        dataout = dataina + datainb;
+        writeback = 0;
+      end `ORR: begin
+        dataout = dataina | datainb;
+        writeback = 1;
+      end `MOV: begin
+        dataout = datainb;
+        writeback = 1;
+      end `BIC: begin
+        dataout = dataina & ~datainb;
+        writeback = 1;
+      end `MVN: begin
+        dataout = ~datainb;
+        writeback = 1;
+      end
+    endcase
+
+    // set flags
+    if (setflags | opcode == `TST | opcode == `TEQ | opcode == `CMP | opcode == `CMN) begin
+      // N
+      if (dataout[31] == 1) cpsrout = cpsrin | 4'b1000;
+      else cpsrout = cpsrin & 4'b0111;
+      // Z
+      if (dataout == 0) cpsrout = cpsrin | 4'b0100;
+      else cpsrout = cpsrin & 4'b1011;
+      // C
+      // sub
+      if (opcode == `SUB | opcode == `RSB | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
+        if (dataina < datainb) cpsrout = cpsrin | 4'b0010;
+        else cpsrout = cpsrin & 4'b1101;
+      end
+      // add 
+      if (opcode == `ADD | opcode == `ADC | opcode == `CMN) begin
+        if (dataina[31] == 1 & datainb[31] == 1) cpsrout = cpsrin | 4'b0010;
+        else cpsrout = cpsrin & 4'b1101;
+      end
+      // V
+      // sub or add
+      if (opcode == `SUB | opcode == `RSB | opcode == `ADD | opcode == `ADC | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
+        // signed overflow
+        if (dataina[31] == 0 & datainb[31] == 0 & dataout[31] == 1) cpsrout = cpsrin | 4'b0001;
+        else cpsrout = cpsrin & 4'b1110;
+      end
+    end
+  end
+endmodule
