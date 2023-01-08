@@ -42,7 +42,7 @@ module instructionDecoder (
               rm = ins[3:0];
               shifttype = ins[6:5];
               // todo use c_shiftbyimm for if statement 
-              control[`c_shiftvalimm] = 0;
+              control[`c_shiftvalimm] = ins[25];
               control[`c_shiftbyimm] = ~ins[4];
               if (ins[4] == 0)
                 shiftby = ins[11:7];
@@ -99,7 +99,7 @@ module instructionDecoder (
               shiftby = ins[11:8] * 2; // rotate by
               shifttype = 2'b11;
               shiftval = ins[7:0];
-              control[`c_shiftvalimm] = 1;
+              control[`c_shiftvalimm] = ins[25];
               control[`c_shiftbyimm] = 1;
               if (ins[15:12] == `PC) 
                 control[`c_pcchange] = 1;

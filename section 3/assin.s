@@ -1,6 +1,7 @@
-mov r0, #0xff000000
-movS r1, r0, lsr #2
-movS r1, r0, lsr #0 
+mov r0, #0xf0000000
+mov r1, #0xf0000000
+adds r2, r0, r1
+
 
 
 @movS r1, r0, lsr #2 @0

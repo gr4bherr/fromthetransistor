@@ -40,10 +40,10 @@ module barrelShifter (
         if (val[31]) dataout = val >> by | 32'hffffffff << width - by;
         else dataout = val >> by;
       end `ROR: begin 
-        if (by == 0) begin // RRX
-          carry = val[0];
-          flagsout = {flagsin[3:2], carry[0] , flagsin[0]};
-          dataout = {flagsin[1], val & 31'b1111111111111111111111111111111};
+        if (by == 0 & ~vimm) begin // RRX [4] == 0
+          $display("rrx");
+          flagsout = {flagsin[3:2], val[0] , flagsin[0]};
+          dataout = val >> 1 | {flagsin[1], 31'b0};
         end else begin // ROR
           carry = val >> by - 1;
           flagsout = {flagsin[3:2], carry[0] , flagsin[0]};

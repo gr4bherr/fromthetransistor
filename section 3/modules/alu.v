@@ -8,6 +8,8 @@ module alu (
   output reg [31:0] dataout,
   output reg [3:0] flagsout
 );
+  reg nf, zf, cf, vf;
+
   always @ (*) begin
     case (opcode)
       `AND: begin
@@ -64,31 +66,30 @@ module alu (
     // set flags
     if (setflags | opcode == `TST | opcode == `TEQ | opcode == `CMP | opcode == `CMN) begin
       // N
-      if (dataout[31] == 1) flagsout = flagsin | 4'b1000;
-      else flagsout = flagsin & 4'b0111;
+      if (dataout[31] == 1) nf = 1'b1;
+      else nf = 1'b0;
       // Z
-      if (dataout == 0) flagsout = flagsin | 4'b0100;
-      else flagsout = flagsin & 4'b1011;
+      if (dataout == 0) zf = 1'b1;
+      else zf = 1'b0;
       // C
       // sub
       if (opcode == `SUB | opcode == `RSB | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
-        if (dataina < datainb) flagsout = flagsin | 4'b0010;
-        else flagsout = flagsin & 4'b1101;
+        if (dataina < datainb) cf = 1'b1;
+        else cf = 1'b0;
       end
       // add 
       if (opcode == `ADD | opcode == `ADC | opcode == `CMN) begin
-        if (dataina[31] == 1 & datainb[31] == 1) flagsout = flagsin | 4'b0010;
-        else flagsout = flagsin & 4'b1101;
+        if (dataina[31] == 1 & datainb[31] == 1) cf = 1'b1;
+        else cf = 1'b1;
       end
       // V
       // sub or add
       if (opcode == `SUB | opcode == `RSB | opcode == `ADD | opcode == `ADC | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
         // signed overflow
-        if (dataina[31] == 0 & datainb[31] == 0 & dataout[31] == 1) flagsout = flagsin | 4'b0001;
-        else flagsout = flagsin & 4'b1110;
+        if (dataina[31] == 0 & datainb[31] == 0 & dataout[31] == 1) vf = 1'b1;
+        else vf = 1'b0;
       end
+      flagsout = {nf, zf, cf, vf};
     end
-    //else 
-    //flagsout =//
   end
 endmodule
