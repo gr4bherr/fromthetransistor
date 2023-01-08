@@ -15,7 +15,6 @@
 // ./assembler.py assin.s && iverilog -o cpu.out cpuTB.v cpu.v && ./cpu.out
 
 module cpu (input clk);
-  // INPUT SIGNALS (instr)
   // BUSES
   wire [31:0] databus;
   wire [31:0] alubus;
@@ -28,16 +27,13 @@ module cpu (input clk);
   wire [31:0] decodebus;
   wire [31:0] pcbus;
 
-
   // MODULES
-  memory memoryModule (
-    .clk (clk), 
-    .write (ctrl[`c_memwrite]), 
-    //.out (ctrl[`c_memout]),
-    .out (1'b1),
-    .address (addressbus),
-    .data (databus)
-  );
+  addressIncrementer addressIncrementerModule (
+    //.increment (ctrl[`c_incrementenable]),
+    .increment (1'b1),
+    .datain (incrinbus),
+    .dataout (incrementerbus));
+
   addressRegister addressRegisterModule (
     .clk (clk),
     //.write (ctrl[`c_addrwrite]),
@@ -53,32 +49,43 @@ module cpu (input clk);
     .in2 (incrementerbus),
     .in3 (pcbus),
     .out1 (addressbus),
-    .out2 (incrinbus)
-  );
-  addressIncrementer addressIncrementerModule (
-    //.increment (ctrl[`c_incrementenable]),
-    .increment (1'b1),
-    .datain (incrinbus),
-    .dataout (incrementerbus)
-  );
+    .out2 (incrinbus));
+
+  wire writebackalu;
+  wire [3:0] aluflagsout;
+  alu aluModule (
+    .opcode (i_opcode),
+    .setflags (ctrl[`c_setflags]),
+    .dataina (abus),
+    .datainb (bbusext),
+    .flagsin (bsflagsout),
+    .writeback (writebackalu),
+    .dataout (alubus),
+    .flagsout (aluflagsout));
+
+  wire [3:0] bsflagsout;
+  barrelShifter barrelShifterModule (
+    .vimm (ctrl[`c_shiftvalimm]),
+    .bimm (ctrl[`c_shiftbyimm]),
+    .type (i_shifttype),
+    .valimm (i_shiftval),
+    .valreg (bbus),
+    .byimm (i_shiftby),
+    .byreg (shiftbyreg),
+    .datain (bbus),
+    .dataout (bbusext),
+    .flagsin (cpsrflagsout),
+    .flagsout (bsflagsout));
+
+
   dataRegister dataRegisterModule (
     .clk (clk),
     .inon (ctrl[`c_dataregin]),
     //.outon (ctrl[`c_dataregout]),
     .outon (1'b0),
     .datain (bbus),
-    .dataout (databus)
-  );
-  instructionRegister instructionRegisterModule (
-    .clk (clk),
-    //.inon (ctrl[`c_instructionRegisterin]),
-    .inon (1'b1),
-    //.out1on (ctrl[`c_instructionRegisterout]),
-    .out1on (1'b1),
-    .datain (databus),
-    .dataout1 (bbus),
-    .dataout2 (decodebus)
-  );
+    .dataout (databus));
+
   wire [31:0] ctrl;
   wire [31:0] i_shiftby;
   wire [1:0] i_shifttype;
@@ -87,12 +94,12 @@ module cpu (input clk);
   wire [3:0] i_rn;
   wire [3:0] i_rs;
   wire [3:0] i_rd;
-  wire [31:0] i_shiftval;
+  wire [7:0] i_shiftval;
   instructionDecoder instructionDecoderModule (
     .ins (decodebus),
     //.instruction (instr),
     .control (ctrl),
-    .flags (cpsr),
+    .flagsin (cpsrflagsout),
     .shiftby (i_shiftby),
     .shifttype (i_shifttype),
     .opcode (i_opcode),
@@ -100,10 +107,28 @@ module cpu (input clk);
     .rn (i_rn),
     .rd (i_rd),
     .rs (i_rs),
-    .shiftval (i_shiftval)
-  );
-  wire [31:0] shiftbyreg;
-  wire [3:0] cpsr;
+    .shiftval (i_shiftval));
+
+  instructionRegister instructionRegisterModule (
+    .clk (clk),
+    //.inon (ctrl[`c_instructionRegisterin]),
+    .inon (1'b1),
+    //.out1on (ctrl[`c_instructionRegisterout]),
+    .out1on (1'b1),
+    .datain (databus),
+    .dataout1 (bbus),
+    .dataout2 (decodebus));
+
+  memory memoryModule (
+    .clk (clk), 
+    .write (ctrl[`c_memwrite]), 
+    //.out (ctrl[`c_memout]),
+    .out (1'b1),
+    .address (addressbus),
+    .data (databus));
+
+  wire [7:0] shiftbyreg;
+  wire [3:0] cpsrflagsout;
   registerBank registerBankModule (
     .clk (clk),
     .write (ctrl[`c_regwrite]),
@@ -117,36 +142,12 @@ module cpu (input clk);
     .rn (i_rn),
     .rs (i_rs),
     .rd (i_rd),
-    .updatedflags (newcpsr),
-    .flags (cpsr),
+    .flagsin (aluflagsout),
+    .flagsout (cpsrflagsout),
     .abusout (abus),
     .bbusout (bbus),
     .barrelshifterout (shiftbyreg),
-    .pcbusout (pcbus)
-  );
-  barrelShifter barrelShifterModule (
-    .vimm (ctrl[`c_shiftvalimm]),
-    .bimm (ctrl[`c_shiftbyimm]),
-    .type (i_shifttype),
-    .valimm (i_shiftval),
-    .valreg (bbus),
-    .byimm (i_shiftby),
-    .byreg (shiftbyreg),
-    .datain (bbus),
-    .dataout (bbusext)
-  );
-  wire writebackalu;
-  wire [3:0] newcpsr;
-  alu aluModule (
-    .opcode (i_opcode),
-    .setflags (ctrl[`c_setflags]),
-    .dataina (abus),
-    .datainb (bbusext),
-    .cpsrin (cpsr),
-    .writeback (writebackalu),
-    .dataout (alubus),
-    .cpsrout (newcpsr)
-  );
+    .pcbusout (pcbus));
 
   // FOR TEST // todo
   reg [31:0] cycles = 0;

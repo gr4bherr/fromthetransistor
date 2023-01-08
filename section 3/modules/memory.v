@@ -1,9 +1,9 @@
 module memory(
-  input wire clk,
-  input wire write,
-  input wire out,
-  input wire [31:0] address,
-  inout wire [31:0] data
+  input clk,
+  input write,
+  input out,
+  input [31:0] address,
+  inout [31:0] data
 );
   reg [31:0] mem [0:63]; // 64 * 4 bytes
   integer i;

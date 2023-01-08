@@ -1,8 +1,8 @@
 module instructionDecoder (
-  input wire [31:0] ins,
+  input [31:0] ins,
   output reg [31:0] control,
 
-  input wire [3:0] flags,
+  input [3:0] flagsin,
 
   output reg [31:0] shiftby,
   output reg [1:0] shifttype,
@@ -11,7 +11,7 @@ module instructionDecoder (
   output reg [3:0] rn,
   output reg [3:0] rd,
   output reg [3:0] rs,
-  output reg [31:0] shiftval
+  output reg [7:0] shiftval
 );
   initial begin
     control = 0;
@@ -20,13 +20,13 @@ module instructionDecoder (
   always @ (ins) begin
     control = 32'b0; // todo make into or statements
     // condition check
-    if ((ins[31:28] == `EQ & flags[`N]) | (ins[31:28] == `NE & ~flags[`Z]) | 
-        (ins[31:28] == `CS & flags[`C]) | (ins[31:28] == `CC & ~flags[`C]) | 
-        (ins[31:28] == `MI & flags[`N]) | (ins[31:28] == `PL & ~flags[`N]) | 
-        (ins[31:28] == `VS & flags[`V]) | (ins[31:28] == `VC & ~flags[`V]) |
-        (ins[31:28] == `HI & flags[`C] & ~flags[`Z]) | (ins[31:28] == `LS & ~flags[`C] & flags[`Z]) | 
-        (ins[31:28] == `GE & flags[`Z] == flags[`V]) | (ins[31:28] == `LT & flags[`Z] != flags[`V]) | 
-        (ins[31:28] == `GT & ~flags[`Z] & flags[`N] == flags[`V]) | (ins[31:28] == `LE & (flags[`Z] | flags[`N] != flags[`V])) | 
+    if ((ins[31:28] == `EQ & flagsin[`N]) | (ins[31:28] == `NE & ~flagsin[`Z]) | 
+        (ins[31:28] == `CS & flagsin[`C]) | (ins[31:28] == `CC & ~flagsin[`C]) | 
+        (ins[31:28] == `MI & flagsin[`N]) | (ins[31:28] == `PL & ~flagsin[`N]) | 
+        (ins[31:28] == `VS & flagsin[`V]) | (ins[31:28] == `VC & ~flagsin[`V]) |
+        (ins[31:28] == `HI & flagsin[`C] & ~flagsin[`Z]) | (ins[31:28] == `LS & ~flagsin[`C] & flagsin[`Z]) | 
+        (ins[31:28] == `GE & flagsin[`Z] == flagsin[`V]) | (ins[31:28] == `LT & flagsin[`Z] != flagsin[`V]) | 
+        (ins[31:28] == `GT & ~flagsin[`Z] & flagsin[`N] == flagsin[`V]) | (ins[31:28] == `LE & (flagsin[`Z] | flagsin[`N] != flagsin[`V])) | 
         (ins[31:28] == `AL)) begin
       if (ins[27:26] == 2'b00) begin
           if (ins[25] == 1'b0) begin

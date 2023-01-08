@@ -1,19 +1,19 @@
 module addressRegister (
-  input wire clk,
+  input clk,
   // control
-  input wire write,
-  input wire in1on,
-  input wire in2on,
-  input wire in3on,
-  input wire out1on,
+  input write,
+  input in1on,
+  input in2on,
+  input in3on,
+  input out1on,
   //input wire out2on,
 
-  input wire [31:0] in1, // alu bus 
-  input wire [31:0] in2, // incrementer bus
-  input wire [31:0] in3, // pc bus 
+  input [31:0] in1, // alu bus 
+  input [31:0] in2, // incrementer bus
+  input [31:0] in3, // pc bus 
  
-  output wire [31:0] out1, // out to memory 
-  output wire [31:0] out2 // out to address incrementer
+  output [31:0] out1, // out to memory 
+  output [31:0] out2 // out to address incrementer
 );
   reg [31:0] areg;
 

@@ -1,32 +1,32 @@
 module registerBank (
-  input wire clk, 
-  input wire write,
-  input wire in1on,
-  input wire in2on,
-  input wire pcchange,
-  input wire writeback,
-  input wire cpsrwrite,
+  input clk, 
+  input write,
+  input in1on,
+  input in2on,
+  input pcchange,
+  input writeback,
+  input cpsrwrite,
 
-  input wire [31:0] alubusin,
-  input wire [31:0] incrbusin,
-  input wire [3:0] rm,
-  input wire [3:0] rn,
-  input wire [3:0] rs,
-  input wire [3:0] rd,
-  input wire [3:0] updatedflags,
-  output wire [3:0] flags,
-  output wire [31:0] abusout, // rn
-  output wire [31:0] bbusout, // rm
-  output wire [31:0] barrelshifterout, // (rs) shiftamountreg 
-  output wire [31:0] pcbusout
+  input [31:0] alubusin,
+  input [31:0] incrbusin,
+  input [3:0] rm,
+  input [3:0] rn,
+  input [3:0] rs,
+  input [3:0] rd,
+  input [3:0] flagsin,
+  output [3:0] flagsout,
+  output [31:0] abusout, // rn
+  output [31:0] bbusout, // rm
+  output [7:0] barrelshifterout, // (rs) shiftamountreg 
+  output [31:0] pcbusout
 );
   // 16 base registers + cpsr
   reg [31:0] regs [0:16];
 
-  assign flags = regs[`CPSR][31:28];
+  assign flagsout = regs[`CPSR][31:28];
   assign abusout = regs[rn];
   assign bbusout = regs[rm];
-  assign barrelshifterout = regs[rs];
+  assign barrelshifterout = regs[rs][7:0];
   assign pcbusout = regs[`PC];
 
   // write on falling edge
@@ -40,7 +40,7 @@ module registerBank (
 
     if (writeback) regs[rd] <= alubusin;
     if (~pcchange) regs[`PC] <= incrbusin;
-    if (cpsrwrite) regs[`CPSR] <= {updatedflags, regs[`CPSR][27:0]};
+    if (cpsrwrite) regs[`CPSR] <= {flagsin, regs[`CPSR][27:0]};
   end
 
   // set modes, my cpu doesn't care about them (just for fun)
