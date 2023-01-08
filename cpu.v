@@ -10,6 +10,12 @@
 `define C 29
 `define V 28
 
+`define LSL 0 // (ASL)
+`define LSR 1 
+`define ASR 2
+`define ROR 3 // (RRX)
+
+
 `define EQ 0
 `define NE 1
 `define CS 2
@@ -68,6 +74,7 @@
 `define c_shiftbyimm 17
 `define c_shiftvalimm 18
 `define c_setflags 19
+`define c_pcchange 20
 
 
 module memory(
@@ -120,14 +127,10 @@ module addressRegister (
   assign out1 = out1on ? areg : 32'bz;
   assign out2 = areg;
 
-  // increment
-  always @ (negedge clk) begin
-    if (in1on & write) areg <= in1;
-  end
-  // write
   always @ (posedge clk) begin
-    if (in2on & write) areg <= in2;
-    else if (in3on & write) areg <= in3;
+  // write
+    if (in3on) areg <= in3;
+    else areg <= in2;
   end
 
   initial begin
@@ -193,8 +196,12 @@ module instructionDecoder (
   output reg [3:0] rs,
   output reg [31:0] shiftval
 );
+  initial begin
+    control = 0;
+  end
 
   always @ (ins) begin
+    control = 32'b0; // todo make into or statements
     // condition check
     if ((ins[31:28] == `EQ & flags[`N]) | (ins[31:28] == `NE & ~flags[`Z]) | 
         (ins[31:28] == `CS & flags[`C]) | (ins[31:28] == `CC & ~flags[`C]) | 
@@ -219,11 +226,13 @@ module instructionDecoder (
               shifttype = ins[6:5];
               // todo use c_shiftbyimm for if statement 
               control[`c_shiftvalimm] = 0;
-              control[`c_shiftbyimm] = ins[4];
+              control[`c_shiftbyimm] = ~ins[4];
               if (ins[4] == 0)
                 shiftby = ins[11:7];
               else
                 rs = ins[11:8];
+              if (ins[15:12] == `PC) 
+                control[`c_pcchange] = 1;
             end else if ((ins[24:23] == 2'b10 & ins[20] == 1'b0) & (ins[7] == 1'b0)) begin
               // PSR TRANSFER: mrs reg, msr reg (1/2)
               if (ins[6:4] == 3'b000) begin
@@ -275,6 +284,8 @@ module instructionDecoder (
               shiftval = ins[7:0];
               control[`c_shiftvalimm] = 1;
               control[`c_shiftbyimm] = 1;
+              if (ins[15:12] == `PC) 
+                control[`c_pcchange] = 1;
             // PSR TRANSFER: msr imm (2/2)
             end else if (ins[24:23] == 2'b10 & ins[21:20] == 2'b10) begin 
               // i, p, u, b, w, l, rn, rd
@@ -325,7 +336,7 @@ module registerBank (
   input wire write,
   input wire in1on,
   input wire in2on,
-  input wire pcwrite,
+  input wire pcchange,
   input wire writeback,
   input wire cpsrwrite,
 
@@ -337,8 +348,8 @@ module registerBank (
   input wire [3:0] rd,
   input wire [3:0] updatedflags,
   output wire [3:0] flags,
-  output wire [31:0] abusout, // rm
-  output wire [31:0] bbusout, // rn
+  output wire [31:0] abusout, // rn
+  output wire [31:0] bbusout, // rm
   output wire [31:0] barrelshifterout, // (rs) shiftamountreg 
   output wire [31:0] pcbusout
 );
@@ -346,12 +357,12 @@ module registerBank (
   reg [31:0] regs [0:16];
 
   assign flags = regs[`CPSR][31:28];
-  assign abusout = regs[rm];
-  assign bbusout = regs[rn];
+  assign abusout = regs[rn];
+  assign bbusout = regs[rm];
   assign barrelshifterout = regs[rs];
   assign pcbusout = regs[`PC];
 
-  // write on down edge
+  // write on falling edge
   always @ (negedge clk) begin
     //$display(regs[`PC]);
     // todo
@@ -361,7 +372,7 @@ module registerBank (
     //end
 
     if (writeback) regs[rd] <= alubusin;
-    if (pcwrite & rd != `PC) regs[`PC] <= incrbusin;
+    if (~pcchange) regs[`PC] <= incrbusin;
     if (cpsrwrite) regs[`CPSR] <= {updatedflags, regs[`CPSR][27:0]};
   end
 
@@ -437,16 +448,17 @@ module barrelShifter (
     else 
       by = byreg;
 
-
+    // todo: add carry
     case (type)
-      0: begin 
-        dataout = 32'b00;
-      end 1: begin 
-        dataout =  32'b01;
-      end 2: begin 
-        dataout = 32'b10;
-      end 3: begin 
-        dataout = (val >> by) | (val << (width - by));
+      `LSL: begin 
+        dataout = val << by & 32'hffffffff;
+      end `LSR: begin 
+        dataout = val >> by;
+      end `ASR: begin 
+        if (val[31]) dataout = val >> by | 32'hffffffff << width - by;
+        else dataout = val >> by;
+      end `ROR: begin 
+        dataout = (val >> by) | (val << (width - by)) & 32'hffffffff;
       end
     endcase
   end
@@ -473,6 +485,7 @@ module alu (
         dataout = dataina ^ datainb;
         writeback = 1;
       end `SUB: begin
+        $display("sub", dataina, datainb,":", dataina-datainb);
         dataout = dataina - datainb;
         writeback = 1;
       end `RSB: begin 
@@ -544,7 +557,6 @@ module alu (
         else cpsrout = cpsrin & 4'b1110;
       end
     end
-
   end
 endmodule
 
@@ -581,7 +593,7 @@ module cpu (input clk);
     .in1on (ctrl[`c_addrin1]),
     //.in2on (ctrl[`c_addrin2]),
     .in2on (1'b1),
-    .in3on (1'b1),
+    .in3on (ctrl[`c_pcchange]),
     //.out1on (ctrl[`c_addrout1]),
     .out1on (1'b1),
     //.out2on (c_addrout2),
@@ -644,7 +656,7 @@ module cpu (input clk);
     .clk (clk),
     .write (ctrl[`c_regwrite]),
     //.pcwrite (ctrl[`c_regpcwrite]),
-    .pcwrite (1'b1),
+    .pcchange (ctrl[`c_pcchange]),
     .cpsrwrite (ctrl[`c_setflags]),
     .writeback (writebackalu),
     .alubusin (alubus),
