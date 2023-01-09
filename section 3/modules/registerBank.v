@@ -20,8 +20,8 @@ module registerBank (
   output [7:0] barrelshifterout, // (rs) shiftamountreg 
   output [31:0] pcbusout
 );
-  // 16 base registers + cpsr
-  reg [31:0] regs [0:16];
+  // using 16 base registers + cpsr
+  reg [31:0] regs [0:31];
 
   assign flagsout = regs[`CPSR][31:28];
   assign abusout = regs[rn];

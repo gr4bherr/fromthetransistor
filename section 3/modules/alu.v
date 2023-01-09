@@ -78,10 +78,11 @@ module alu (
         else cf = 1'b0;
       end
       // add 
-      if (opcode == `ADD | opcode == `ADC | opcode == `CMN) begin
+      else if (opcode == `ADD | opcode == `ADC | opcode == `CMN) begin
         if (dataina[31] == 1 & datainb[31] == 1) cf = 1'b1;
         else cf = 1'b1;
       end
+      else cf = flagsin[1];
       // V
       // sub or add
       if (opcode == `SUB | opcode == `RSB | opcode == `ADD | opcode == `ADC | opcode == `SBC | opcode == `RSC | opcode == `CMP) begin
@@ -89,6 +90,7 @@ module alu (
         if (dataina[31] == 0 & datainb[31] == 0 & dataout[31] == 1) vf = 1'b1;
         else vf = 1'b0;
       end
+      else vf = 1'b0;
       flagsout = {nf, zf, cf, vf};
     end
   end

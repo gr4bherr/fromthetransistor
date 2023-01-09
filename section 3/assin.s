@@ -1,6 +1,9 @@
-mov r0, #0xf0000000
-mov r1, #0xf0000000
-adds r2, r0, r1
+mov r1, #0xff
+MRS R0,CPSR
+BIC R0,R0,#0x1F
+ORR R0,R0,#3
+MSR CPSR,R0
+MSR CPSR_flg,#0xF0000000
 
 
 

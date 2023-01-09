@@ -100,7 +100,10 @@ class Operands:
     if self.shift:
       # reg with imm shift
       if self.imm:
-        shift = self._immediate(self.imm, 5) + self.shift + "0"
+        if self.shift == "01" and int(self._immediate(self.imm, 5)) == 0: # lsr #0
+          shift = self._immediate(self.imm, 5) + "00" + "0"
+        else:
+          shift = self._immediate(self.imm, 5) + self.shift + "0"
         rm = self.regs[-1]
       # reg with reg shift or rrx
       else:
@@ -109,7 +112,11 @@ class Operands:
           shift = "00000110" # todo technically an imm shift
           rm = self.regs[-1]
         else:
-          shift = f"{self.regs[-1]}0{self.shift}1"
+          print(self.shift, self.regs[-1])
+          if self.shift == "01" and int(self.regs[-1]) == 0: # lsr #0
+            shift = f"{self.regs[-1]}000"
+          else:
+            shift = f"{self.regs[-1]}0{self.shift}1"
           rm = self.regs[-2]
       return shift + rm
     # no shift

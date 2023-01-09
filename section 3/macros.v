@@ -71,3 +71,4 @@
 `define c_shiftvalimm 18
 `define c_setflags 19
 `define c_pcchange 20
+`define c_shift 21

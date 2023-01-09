@@ -64,9 +64,11 @@ module cpu (input clk);
     .flagsout (aluflagsout));
 
   wire [3:0] bsflagsout;
+  wire barrelcarry;
   barrelShifter barrelShifterModule (
     .vimm (ctrl[`c_shiftvalimm]),
     .bimm (ctrl[`c_shiftbyimm]),
+    .shift (ctrl[`c_shift]),
     .type (i_shifttype),
     .valimm (i_shiftval),
     .valreg (bbus),
@@ -95,6 +97,7 @@ module cpu (input clk);
   wire [3:0] i_rs;
   wire [3:0] i_rd;
   wire [7:0] i_shiftval;
+  wire [3:0] i_insnum;
   instructionDecoder instructionDecoderModule (
     .ins (decodebus),
     //.instruction (instr),
@@ -107,7 +110,8 @@ module cpu (input clk);
     .rn (i_rn),
     .rd (i_rd),
     .rs (i_rs),
-    .shiftval (i_shiftval));
+    .shiftval (i_shiftval),
+    .insnum (i_insnum));
 
   instructionRegister instructionRegisterModule (
     .clk (clk),

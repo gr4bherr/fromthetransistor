@@ -3,7 +3,7 @@ module instructionRegister (
   input clk,
   input inon,
   input out1on,
-  input [31:0] datain,
+  input [31:0] datain, // data bus
   output [31:0] dataout1, // b bus
   output [31:0] dataout2 // instruction decoder
 );
