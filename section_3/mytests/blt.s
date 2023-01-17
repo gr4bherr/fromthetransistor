@@ -9,7 +9,7 @@ beq t5,t6,write_tohost
 li t6,11
 beq t5,t6,write_tohost
 li t5,0
-beqz t5,4
+beqz t5,8
 jr t5
 csrr t5,mcause
 bgez t5,handle_exception
@@ -78,14 +78,14 @@ addi t0,t0,-276
 csrw mtvec,t0
 li a0,1
 slli a0,a0,0x1f
-bltz a0,12
+bltz a0,24
 fence
 li gp,1
 li a7,93
 li a0,0
 ecall
 li t0,0
-beqz t0,10
+beqz t0,20
 csrw stvec,t0
 lui t0,0xb
 addi t0,t0,265
@@ -100,61 +100,61 @@ test_2:
 li gp,2
 li ra,0
 li sp,1
-blt ra,sp,6
+blt ra,sp,12
 bne zero,gp,fail
 bne zero,gp,test_3
-blt ra,sp,-2
+blt ra,sp,-4
 bne zero,gp,fail
 test_3:
 li gp,3
 li ra,-1
 li sp,1
-blt ra,sp,6
+blt ra,sp,12
 bne zero,gp,fail
 bne zero,gp,test_4
-blt ra,sp,-2
+blt ra,sp,-4
 bne zero,gp,fail
 test_4:
 li gp,4
 li ra,-2
 li sp,-1
-blt ra,sp,6
+blt ra,sp,12
 bne zero,gp,fail
 bne zero,gp,test_5
-blt ra,sp,-2
+blt ra,sp,-4
 bne zero,gp,fail
 test_5:
 li gp,5
 li ra,1
 li sp,0
-blt ra,sp,4
-bne zero,gp,4
+blt ra,sp,8
+bne zero,gp,8
 bne zero,gp,fail
-blt ra,sp,-2
+blt ra,sp,-4
 test_6:
 li gp,6
 li ra,1
 li sp,-1
-blt ra,sp,4
-bne zero,gp,4
+blt ra,sp,8
+bne zero,gp,8
 bne zero,gp,fail
-blt ra,sp,-2
+blt ra,sp,-4
 test_7:
 li gp,7
 li ra,-1
 li sp,-2
-blt ra,sp,4
-bne zero,gp,4
+blt ra,sp,8
+bne zero,gp,8
 bne zero,gp,fail
-blt ra,sp,-2
+blt ra,sp,-4
 test_8:
 li gp,8
 li ra,1
 li sp,-2
-blt ra,sp,4
-bne zero,gp,4
+blt ra,sp,8
+bne zero,gp,8
 bne zero,gp,fail
-blt ra,sp,-2
+blt ra,sp,-4
 test_9:
 li gp,9
 li tp,0
@@ -163,7 +163,7 @@ li sp,-1
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-10
+bne tp,t0,-20
 test_10:
 li gp,10
 li tp,0
@@ -173,7 +173,7 @@ nop
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-12
+bne tp,t0,-24
 test_11:
 li gp,11
 li tp,0
@@ -184,7 +184,7 @@ nop
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_12:
 li gp,12
 li tp,0
@@ -194,7 +194,7 @@ li sp,-1
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-12
+bne tp,t0,-24
 test_13:
 li gp,13
 li tp,0
@@ -205,7 +205,7 @@ nop
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_14:
 li gp,14
 li tp,0
@@ -216,7 +216,7 @@ li sp,-1
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_15:
 li gp,15
 li tp,0
@@ -225,7 +225,7 @@ li sp,-1
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-10
+bne tp,t0,-20
 test_16:
 li gp,16
 li tp,0
@@ -235,7 +235,7 @@ nop
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-12
+bne tp,t0,-24
 test_17:
 li gp,17
 li tp,0
@@ -246,7 +246,7 @@ nop
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_18:
 li gp,18
 li tp,0
@@ -256,7 +256,7 @@ li sp,-1
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-12
+bne tp,t0,-24
 test_19:
 li gp,19
 li tp,0
@@ -267,7 +267,7 @@ nop
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_20:
 li gp,20
 li tp,0
@@ -278,11 +278,11 @@ li sp,-1
 blt ra,sp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_21:
 li gp,21
 li ra,1
-bgtz ra,10
+bgtz ra,20
 addi ra,ra,1
 addi ra,ra,1
 addi ra,ra,1

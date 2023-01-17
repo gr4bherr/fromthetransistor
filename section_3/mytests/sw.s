@@ -9,7 +9,7 @@ beq t5,t6,write_tohost
 li t6,11
 beq t5,t6,write_tohost
 li t5,0
-beqz t5,4
+beqz t5,8
 jr t5
 csrr t5,mcause
 bgez t5,handle_exception
@@ -78,14 +78,14 @@ addi t0,t0,-276
 csrw mtvec,t0
 li a0,1
 slli a0,a0,0x1f
-bltz a0,12
+bltz a0,24
 fence
 li gp,1
 li a7,93
 li a0,0
 ecall
 li t0,0
-beqz t0,10
+beqz t0,20
 csrw stvec,t0
 lui t0,0xb
 addi t0,t0,265
@@ -106,7 +106,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,0(ra)
 lw a4,0(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xaa0
 addi t2,t2,170
@@ -121,7 +121,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,4(ra)
 lw a4,4(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xaa00b
 addi t2,t2,-1536
@@ -136,7 +136,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,8(ra)
 lw a4,8(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xaa01
 addi t2,t2,-1376
@@ -151,7 +151,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,12(ra)
 lw a4,12(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xa00aa
 addi t2,t2,10
@@ -166,7 +166,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,-12(ra)
 lw a4,-12(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xaa0
 addi t2,t2,170
@@ -181,7 +181,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,-8(ra)
 lw a4,-8(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xaa00b
 addi t2,t2,-1536
@@ -196,7 +196,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,-4(ra)
 lw a4,-4(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xaa01
 addi t2,t2,-1376
@@ -211,7 +211,7 @@ auipc a5,0x0
 addi a5,a5,20
 sw sp,0(ra)
 lw a4,0(ra)
-j 4
+j 8
 mv a4,sp
 lui t2,0xa00aa
 addi t2,t2,10
@@ -256,7 +256,7 @@ addi t2,t2,-803
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-22
+bne tp,t0,-44
 test_13:
 li gp,13
 li tp,0
@@ -272,7 +272,7 @@ addi t2,t2,-819
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-24
+bne tp,t0,-48
 test_14:
 li gp,14
 li tp,0
@@ -289,7 +289,7 @@ addi t2,t2,-1076
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-26
+bne tp,t0,-52
 test_15:
 li gp,15
 li tp,0
@@ -305,7 +305,7 @@ addi t2,t2,-1092
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-24
+bne tp,t0,-48
 test_16:
 li gp,16
 li tp,0
@@ -322,7 +322,7 @@ addi t2,t2,-1349
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-26
+bne tp,t0,-52
 test_17:
 li gp,17
 li tp,0
@@ -339,7 +339,7 @@ addi t2,t2,-1365
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-26
+bne tp,t0,-52
 test_18:
 li gp,18
 li tp,0
@@ -354,7 +354,7 @@ addi t2,t2,563
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-22
+bne tp,t0,-44
 test_19:
 li gp,19
 li tp,0
@@ -370,7 +370,7 @@ addi t2,t2,547
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-24
+bne tp,t0,-48
 test_20:
 li gp,20
 li tp,0
@@ -387,7 +387,7 @@ addi t2,t2,290
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-26
+bne tp,t0,-52
 test_21:
 li gp,21
 li tp,0
@@ -403,7 +403,7 @@ addi t2,t2,274
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-24
+bne tp,t0,-48
 test_22:
 li gp,22
 li tp,0
@@ -420,7 +420,7 @@ addi t2,t2,17
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-26
+bne tp,t0,-52
 test_23:
 li gp,23
 li tp,0
@@ -437,7 +437,7 @@ addi t2,t2,1
 bne a4,t2,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-26
+bne tp,t0,-52
 bne zero,gp,pass
 fail:
 fence

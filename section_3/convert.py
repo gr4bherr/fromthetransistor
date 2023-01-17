@@ -30,7 +30,7 @@ for path in sorted(glob.glob("mytests/*.dump")):
           if len(line) > 4:  # has label reference
             mnem = line[2]
             op = line[-2][:-8]
-            num = (int(line[-2][-8:], 16) - int(line[0][:-1], 16)) // 2
+            num = (int(line[-2][-8:], 16) - int(line[0][:-1], 16))
             label = line[-1]
             if "+0x" not in line[-1]: # label 
               outa.write(f"{mnem} {op}{label}\n")

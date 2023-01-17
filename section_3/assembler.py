@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 
 import glob
+import struct
 
 # two pass
 # case insensitive
 # rv32i base instruction set + (some) pseudo instructions + (some) privileged instrucitons
 
-
 # **** CONSTANTS ****
 TP = 0
 OP = 1
 F3 = 2
-F7 = 3
 RTYPE = 0
 ITYPE = 1
 STYPE = 2
@@ -19,64 +18,64 @@ BTYPE = 3
 UTYPE = 4
 JTYPE = 5
 
-symboltable = { # [type, opcode, funct3, funct7]
+symboltable = { # [type, opcode, funct3]
   # r-type
-  "slli"   : [RTYPE, "0010011", "001", "0000000"],
-  "srli"   : [RTYPE, "0010011", "101", "0000000"],
-  "srai"   : [RTYPE, "0010011", "101", "0100000"],
-  "add"    : [RTYPE, "0110011", "000", "0000000"],
-  "sub"    : [RTYPE, "0110011", "000", "0100000"],
-  "sll"    : [RTYPE, "0110011", "001", "0000000"],
-  "slt"    : [RTYPE, "0110011", "010", "0000000"],
-  "sltu"   : [RTYPE, "0110011", "011", "0000000"],
-  "xor"    : [RTYPE, "0110011", "100", "0000000"],
-  "srl"    : [RTYPE, "0110011", "101", "0000000"],
-  "sra"    : [RTYPE, "0110011", "101", "0100000"],
-  "or"     : [RTYPE, "0110011", "110", "0000000"],
-  "and"    : [RTYPE, "0110011", "111", "0000000"],
+  "add"    : [RTYPE, "0110011", "000"],
+  "sub"    : [RTYPE, "0110011", "000"],
+  "sll"    : [RTYPE, "0110011", "001"],
+  "slt"    : [RTYPE, "0110011", "010"],
+  "sltu"   : [RTYPE, "0110011", "011"],
+  "xor"    : [RTYPE, "0110011", "100"],
+  "srl"    : [RTYPE, "0110011", "101"],
+  "sra"    : [RTYPE, "0110011", "101"],
+  "or"     : [RTYPE, "0110011", "110"],
+  "and"    : [RTYPE, "0110011", "111"],
   # i-type
-  "lb"     : [ITYPE, "0000011", "000", None],
-  "lh"     : [ITYPE, "0000011", "001", None],
-  "lw"     : [ITYPE, "0000011", "010", None],
-  "lbu"    : [ITYPE, "0000011", "100", None],
-  "lhu"    : [ITYPE, "0000011", "101", None],
-  "addi"   : [ITYPE, "0010011", "000", None],
-  "slti"   : [ITYPE, "0010011", "010", None],
-  "sltiu"  : [ITYPE, "0010011", "011", None],
-  "xori"   : [ITYPE, "0010011", "100", None],
-  "ori"    : [ITYPE, "0010011", "110", None],
-  "andi"   : [ITYPE, "0010011", "111", None],
-  "jalr"   : [ITYPE, "1100111", "000", None],
+  "lb"     : [ITYPE, "0000011", "000"],
+  "lh"     : [ITYPE, "0000011", "001"],
+  "lw"     : [ITYPE, "0000011", "010"],
+  "lbu"    : [ITYPE, "0000011", "100"],
+  "lhu"    : [ITYPE, "0000011", "101"],
+  "addi"   : [ITYPE, "0010011", "000"],
+  "slti"   : [ITYPE, "0010011", "010"],
+  "sltiu"  : [ITYPE, "0010011", "011"],
+  "xori"   : [ITYPE, "0010011", "100"],
+  "ori"    : [ITYPE, "0010011", "110"],
+  "andi"   : [ITYPE, "0010011", "111"],
+  "slli"   : [ITYPE, "0010011", "001"],
+  "srli"   : [ITYPE, "0010011", "101"],
+  "srai"   : [ITYPE, "0010011", "101"],
+  "jalr"   : [ITYPE, "1100111", "000"],
   # s-type
-  "sb"     : [STYPE, "0100011", "000", None],
-  "sh"     : [STYPE, "0100011", "001", None],
-  "sw"     : [STYPE, "0100011", "010", None],
+  "sb"     : [STYPE, "0100011", "000"],
+  "sh"     : [STYPE, "0100011", "001"],
+  "sw"     : [STYPE, "0100011", "010"],
   # b-type
-  "beq"    : [BTYPE, "1100011", "000", None],
-  "bne"    : [BTYPE, "1100011", "001", None],
-  "blt"    : [BTYPE, "1100011", "100", None],
-  "bge"    : [BTYPE, "1100011", "101", None],
-  "bltu"   : [BTYPE, "1100011", "110", None],
-  "bgeu"   : [BTYPE, "1100011", "111", None],
+  "beq"    : [BTYPE, "1100011", "000"],
+  "bne"    : [BTYPE, "1100011", "001"],
+  "blt"    : [BTYPE, "1100011", "100"],
+  "bge"    : [BTYPE, "1100011", "101"],
+  "bltu"   : [BTYPE, "1100011", "110"],
+  "bgeu"   : [BTYPE, "1100011", "111"],
   # u-type
-  "lui"    : [UTYPE, "0110111", None, None],
-  "auipc"  : [UTYPE, "0010111", None, None],
+  "lui"    : [UTYPE, "0110111", None],
+  "auipc"  : [UTYPE, "0010111", None],
   # j-type
-  "jal"    : [JTYPE, "1101111", None, None],
+  "jal"    : [JTYPE, "1101111", None],
   # other (i-type i guess)
-  "fence"  : [None, "0001111", "000", None],
-  "fence.i": [None, "0001111", "001", None],
-  "ecall"  : [None, "1110011", "000", None],
-  "ebreak" : [None, "1110011", "000", None],
-  "csrrw"  : [None, "1110011", "001", None],
-  "csrrs"  : [None, "1110011", "010", None],
-  "csrrc"  : [None, "1110011", "011", None],
-  "csrrwi" : [None, "1110011", "101", None],
-  "csrrsi" : [None, "1110011", "110", None],
-  "csrrci" : [None, "1110011", "111", None],
+  "fence"  : [None, "0001111", "000"],
+  "fence.i": [None, "0001111", "001"],
+  "ecall"  : [None, "1110011", "000"],
+  "ebreak" : [None, "1110011", "000"],
+  "csrrw"  : [None, "1110011", "001"],
+  "csrrs"  : [None, "1110011", "010"],
+  "csrrc"  : [None, "1110011", "011"],
+  "csrrwi" : [None, "1110011", "101"],
+  "csrrsi" : [None, "1110011", "110"],
+  "csrrci" : [None, "1110011", "111"],
   # privileged (r-type i guess)
   #"sret"  : [None, "1110011", "000", "0001000"],
-  "mret"  : [None, "1110011", "000", "0011000"]
+  "mret"  : [None, "1110011", "000"]
 }
 
 # machine instruction registers
@@ -122,52 +121,29 @@ def bracket(val):
 
 def pseudo(p):
   m = p[0]
-  if m == "nop":
-    return ["addi", "x0", "x0", "0"]
-  elif m == "li":
-    return ["addi", p[1], "x0", p[2]]
-  elif m == "mv":
-    return ["addi", p[1], p[2], "0"]
-  elif m == "not":
-    return ["xori", p[1], p[2], -1]
-  elif m == "neg":
-    return ["sub", p[1], "x0", p[2]]
-  elif m == "negw":
-    return ["subw", p[1], "x0", p[2]]
-  elif m == "sext.w":
-    return ["addiw", p[1], p[2], "0"]
-  elif m == "seqz":
-    return ["sltiu", p[1], p[2], "1"]
-  elif m == "snez":
-    return ["sltu", p[1], "x0", p[2]]
-  elif m == "sgtz":
-    return ["slt", p[1], "x0", p[2]]
-  elif m == "sltz":
-    return ["slt", p[1], p[2], "x0"]
-  elif m == "beqz":
-    return ["beq", p[1], "x0", p[2]]
-  elif m == "bnez":
-    return ["bne", p[1], "x0", p[2]]
-  elif m == "blez":
-    return ["bge", "x0", p[1], p[2]]
-  elif m == "bgez":
-    return ["bge", p[1], "x0", p[2]]
-  elif m == "bltz":
-    return ["blt", p[1], "x0", p[2]]
-  elif m == "bgtz":
-    return ["blt", "x0", p[1], p[2]]
-  elif m == "j":
-    return ["jal", "x0", p[1]]
-  elif m == "jr":
-    return ["jalr", "x0", p[1]]
-  elif m == "csrr":
-    return ["csrrs", p[1], p[2], "x0"]
-  elif m == "csrw":
-    return ["csrrw", "x0", p[1], p[2]]
-  elif m == "csrwi":
-    return ["csrrwi", "x0", p[1], p[2]]
-  elif m == "unimp": # trap
-    return ["csrrw", "x0", "cycle", "x0"]
+  if m == "nop": return ["addi", "x0", "x0", "0"]
+  elif m == "li": return ["addi", p[1], "x0", p[2]]
+  elif m == "mv": return ["addi", p[1], p[2], "0"]
+  elif m == "not": return ["xori", p[1], p[2], -1]
+  elif m == "neg": return ["sub", p[1], "x0", p[2]]
+  elif m == "negw": return ["subw", p[1], "x0", p[2]]
+  elif m == "sext.w": return ["addiw", p[1], p[2], "0"]
+  elif m == "seqz": return ["sltiu", p[1], p[2], "1"]
+  elif m == "snez": return ["sltu", p[1], "x0", p[2]]
+  elif m == "sgtz": return ["slt", p[1], "x0", p[2]]
+  elif m == "sltz": return ["slt", p[1], p[2], "x0"]
+  elif m == "beqz": return ["beq", p[1], "x0", p[2]]
+  elif m == "bnez": return ["bne", p[1], "x0", p[2]]
+  elif m == "blez": return ["bge", "x0", p[1], p[2]]
+  elif m == "bgez": return ["bge", p[1], "x0", p[2]]
+  elif m == "bltz": return ["blt", p[1], "x0", p[2]]
+  elif m == "bgtz": return ["blt", "x0", p[1], p[2]]
+  elif m == "j": return ["jal", "x0", p[1]]
+  elif m == "jr": return ["jalr", "x0", p[1]]
+  elif m == "csrr": return ["csrrs", p[1], p[2], "x0"]
+  elif m == "csrw": return ["csrrw", "x0", p[1], p[2]]
+  elif m == "csrwi": return ["csrrwi", "x0", p[1], p[2]]
+  elif m == "unimp": return ["csrrw", "x0", "cycle", "x0"] # trap
   else:
     print(p, "not defined")
     exit()
@@ -183,12 +159,9 @@ def tokenize(name):
       # comment delete
       if "#" in ins:
         ins = ins[:ins.index("#")]
-      # empty line
-      if ins == "":
+      # empty line, directive
+      if ins == "" or ins[0] == ".":
         None # todo
-      # directive
-      elif ins[0] == ".":
-        None
       # label
       elif ins[-1] == ":":
         labels[ins[:-1]] = insnum
@@ -216,10 +189,11 @@ def assemble(tok):
     st = symboltable[t[0]]
     if st[TP] == RTYPE:
       # funct7, rs2, rs1, funct3, rd, opcode
+      funct7 = "0100000" if t[0] in ["sub", "sra"] else "0000000"
       if t[0] in ["slli", "srli", "srai"]:
-        res = st[F7] + imm(t[3], 5) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
+        res = funct7 + imm(t[3], 5) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
       else:
-        res = st[F7] + regs[t[3]] + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
+        res = funct7 + regs[t[3]] + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
     elif st[TP] == ITYPE:
       # imm12, rs1, funct3, rd, opcode
       if "(" in t[-1]: 
@@ -228,6 +202,9 @@ def assemble(tok):
       else:
         if t[0] == "jalr" and len(t) == 3: # jalr with only two operands
           res = imm(0, 12) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
+        elif t[0] in ["slli", "srli", "srai"]:
+          funct7 = "0100000" if t[0] == "srai" else "0000000"
+          res = funct7 + imm(t[3], 5) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
         else: 
           res = imm(t[3], 12) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
     elif st[TP] == STYPE or st[TP] == BTYPE:
@@ -274,7 +251,7 @@ def assemble(tok):
         # csr, zimm, funct3, rd, opcode
         res = miregs[t[2]] + imm(t[3], 5) + st[F3] + regs[t[1]] + st[OP]
       elif t[0] == "mret":
-        res = f"{st[F7]}0001000000{st[F3]}00000{st[OP]}"
+        res = f"00110000001000000{st[F3]}00000{st[OP]}"
 
     # ** COMPARE **
     joint = " ".join(t)
@@ -285,31 +262,36 @@ def assemble(tok):
     else: # incorrect
       print(f"{int(res, 2):08x} -> {comp[i]}")
       exit()
-    out.append(f"{int(res, 2):08x}\n")
+    out.append(int(res, 2))
   return out
 
 
-
 # **** MAIN ****
-for test in glob.glob("mytests/*.s"):
-  name = test[8:-2]
-  print(f"{name}...")
+if __name__ == "__main__":
+  for test in sorted(glob.glob("mytests/*.s")):
+    name = test[8:-2]
+    print(f"{name}...")
 
-  # compare to test
-  comp = []
-  with open(f"mytests/{name}-cmp.txt", "r") as f:
-    for line in f:
-      comp.append(line.strip())
+    # compare to test
+    comp = []
+    with open(f"mytests/{name}-cmp.txt", "r") as f:
+      for line in f:
+        comp.append(line.strip())
 
-  # first pass
-  tokens = tokenize(name)
+    # first pass
+    tokens = tokenize(name)
 
-  # second pass
-  result = assemble(tokens)
+    # second pass
+    result = assemble(tokens)
 
-  print(name, "passed")
+    print(name, "passed")
 
-  # write output
-  with open(f"mytests/{name}-res.txt", "w") as f:
-    for line in result:
-      f.write(line)
+    # write output
+    # hex
+    with open(f"mytests/{name}-res.txt", "w") as f: 
+      for line in result:
+        f.write(f"{line:08x}\n")
+    # bin
+    with open(f"mytests/{name}-res.bin", "wb") as f: 
+      # little endian unsigned int
+      f.write(struct.pack(f"<{len(result)}I", *result))

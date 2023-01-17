@@ -9,7 +9,7 @@ beq t5,t6,write_tohost
 li t6,11
 beq t5,t6,write_tohost
 li t5,0
-beqz t5,4
+beqz t5,8
 jr t5
 csrr t5,mcause
 bgez t5,handle_exception
@@ -78,14 +78,14 @@ addi t0,t0,-276
 csrw mtvec,t0
 li a0,1
 slli a0,a0,0x1f
-bltz a0,12
+bltz a0,24
 fence
 li gp,1
 li a7,93
 li a0,0
 ecall
 li t0,0
-beqz t0,10
+beqz t0,20
 csrw stvec,t0
 lui t0,0xb
 addi t0,t0,265
@@ -128,7 +128,7 @@ jalr a3,t1
 bne zero,gp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-12
+bne tp,t0,-24
 test_5:
 li gp,5
 li tp,0
@@ -139,7 +139,7 @@ jalr a3,t1
 bne zero,gp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-14
+bne tp,t0,-28
 test_6:
 li gp,6
 li tp,0
@@ -151,7 +151,7 @@ jalr a3,t1
 bne zero,gp,fail
 addi tp,tp,1
 li t0,2
-bne tp,t0,-16
+bne tp,t0,-32
 test_7:
 li gp,7
 li t0,1
