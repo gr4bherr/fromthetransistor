@@ -8,7 +8,7 @@ module pcRegister(
   assign out = pc;
   integer i = 0; // todo not pipelined
   always @(posedge clk) begin
-    $display("%h", pc);
+    //$display("%h", pc);
     // if (reset) begin
     //   pc <= 0;
     // end

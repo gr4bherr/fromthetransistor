@@ -5,7 +5,7 @@ module cpuTB();
   reg reset = 0; // todo more like start
   always #10 clk <= ~clk; // 50 MHz (1 cycle = 20ns)
 
-  cpu arm7tdmi(.clk(clk), .reset(reset));
+  cpu riscv(.clk(clk), .reset(reset));
 
   initial begin
     $display("**** TESTBENCH ****");
@@ -16,7 +16,7 @@ module cpuTB();
     reset <= 0;
     //#1_000_000 // 1ms
     //#500 // 200ns
-    #5000
+    #10000
     $finish;
   end
 endmodule

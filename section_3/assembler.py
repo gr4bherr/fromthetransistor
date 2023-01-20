@@ -95,6 +95,9 @@ miregs = {
   "cycle" : bin(0xc00)
 }
 
+# 0 0000000010 0 00000000   01011 1101111
+# 10 (0) 
+
 # register values (with abi names)
 regs =  {f"x{i}": f"{i:05b}" for i in range(32)} | \
         {f"{val}": f"{i:05b}" for i, val in enumerate(["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1"] + \
@@ -103,12 +106,13 @@ regs =  {f"x{i}": f"{i:05b}" for i in range(32)} | \
 labels = {}
 
 # **** HELPER FUNCTIONS ****
-def imm(val, size = 12):
+def imm(val, size = 12, half = False):
   if isinstance(val, str):
     if "x" in val:
       val = int(val, 16)
     else:
       val = int(val)
+  if half: val = val // 2
   # twos comp
   if val < 0:
     val = ((val * -1) ^ (2 ** size - 1)) + 1
@@ -164,7 +168,7 @@ def tokenize(name):
         None # todo
       # label
       elif ins[-1] == ":":
-        labels[ins[:-1]] = insnum
+        labels[ins[:-1]] = insnum * 4
       # instruction
       else:
         if len(ins.split(None, 1)) > 1: # one or more operands
@@ -207,27 +211,29 @@ def assemble(tok):
           res = funct7 + imm(t[3], 5) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
         else: 
           res = imm(t[3], 12) + regs[t[2]] + st[F3] + regs[t[1]] + st[OP]
-    elif st[TP] == STYPE or st[TP] == BTYPE:
+    elif st[TP] == STYPE:
       # imm7, rs2, rs1, funct3, imm5, opcode
-      if "(" in t[-1]: # S
+      if "(" in t[-1]:
         imm12, rs1 = bracket(t[2])
         res = imm12[:7] + regs[t[1]] + regs[rs1] + st[F3] + imm12[7:] + st[OP]
-      else: # B
-        if t[3] in labels: # label
-          imm12 = imm((labels[t[3]] - i) * 2)
-        else: # number
-          imm12 = imm(t[3])
-        res = imm12[0] + imm12[2:8] + regs[t[2]] + regs[t[1]] + st[F3] + imm12[8:12] + imm12[1] + st[OP]
-    elif st[TP] == UTYPE or st[TP] == JTYPE:
+    elif st[TP] == BTYPE:
+      # imm7, rs2, rs1, funct3, imm5, opcode
+      if t[3] in labels: # label
+        imm13 = imm((labels[t[3]] - i * 4), 13)
+      else: # number
+        imm13 = imm(int(t[3]), 13) #########
+      res = imm13[0] + imm13[2:8] + regs[t[2]] + regs[t[1]] + st[F3] + imm13[8:12] + imm13[1] + st[OP]
+    elif st[TP] == UTYPE:
       # imm20, rd, opcode
+      imm20 = imm(t[2], 20) 
+      res = imm20 + regs[t[1]] + st[OP]
+    elif st[TP] == JTYPE:
+      # imm21, rd, opcode
       if t[2] in labels:
-        imm20 = imm((labels[t[2]] - i) * 2, 20)
+        imm21 = imm((labels[t[2]] - i * 4), 21)
       else:
-        imm20 = imm(t[2], 20)
-      if t[0] == "jal": # J
-        res = imm20[0] + imm20[10:20] + imm20[9] + imm20[1:9]+ regs[t[1]] + st[OP]
-      else: # U
-        res = imm20 + regs[t[1]] + st[OP]
+        imm21 = imm(t[2], 21) ############
+      res = imm21[0] + imm21[10:20] + imm21[9] + imm21[1:9]+ regs[t[1]] + st[OP]
     else:
       if t[0] == "fence":
         # pred, suc, funct3, opcode
@@ -268,6 +274,7 @@ def assemble(tok):
 
 # **** MAIN ****
 if __name__ == "__main__":
+  ls = sorted(glob.glob("mytests/*.s"))
   for test in sorted(glob.glob("mytests/*.s")):
     name = test[8:-2]
     print(f"{name}...")

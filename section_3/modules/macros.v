@@ -8,7 +8,7 @@
 
 `define op_s      7'b0100011
 `define op_b      7'b1100011
-`define op_u_imm  7'b0110111
+`define op_u_pc   7'b0110111
 `define op_u      7'b0010111
 `define op_j      7'b1101111
 
@@ -24,3 +24,10 @@
 `define SRL_SRA 3'b101
 `define OR      3'b110
 `define AND     3'b111
+
+`define BEQ  3'b000
+`define BNE  3'b001
+`define BLT  3'b100
+`define BGE  3'b101
+`define BLTU 3'b110
+`define BGEU 3'b111

@@ -14,7 +14,7 @@ module registerBank(
   assign rs2 = regs[rs2addr];
 
   always @(posedge clk) begin
-    if (regwrite) begin
+    if (regwrite & rdaddr != 0) begin
       regs[rdaddr] <= rddata;
     end
   end
