@@ -16,7 +16,7 @@ module cpuTB();
     reset <= 0;
     //#1_000_000 // 1ms
     //#500 // 200ns
-    #10000
+    #20_000
     $finish;
   end
 endmodule

@@ -14,7 +14,7 @@ module instructionMemory(
   integer i = 0;
   initial begin
     // load instructions into instruction memory
-    $readmemh("mytests/simple-res.txt", imem);
+    $readmemh("mytests/beq-res.txt", imem);
     $display("INSTRUCTION MEMORY:");
     for (i=0;i<(`imemsize-1)/4;i=i+3) begin
       $display("%-03h : %-8h  %-8h  %-8h  %-8h", i*4, imem[i], imem[i+1], imem[i+2], imem[i+3]);

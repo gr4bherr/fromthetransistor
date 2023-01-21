@@ -11,9 +11,6 @@
 `include "modules/multiplexer4to1.v"
 `include "modules/pcRegister.v"
 `include "modules/registerBank.v"
-`include "modules/signExtend.v"
-
-// todo reuse module (pipes, mux)
 
 // **** MAIN MODULE ****
 module cpu(input clk, input reset);
@@ -45,27 +42,20 @@ module cpu(input clk, input reset);
   );
   
   // ** DECODE **
-  wire [31:0] dbuff;
-  buffer decodeBufferMoudle(
-    .clk(clk),
-    .in(pc),
-    .out(dbuff)
-  );
   wire [31:0] ir1;
-  buffer ir1BufferModule(
+  wire [31:0] dbuff; // pc
+  buffer decodeBufferModule(
     .clk(clk),
-    .in(imem),
-    .out(ir1)
+    .in0(imem),
+    .in1(pc),
+    .out0(ir1),
+    .out1(dbuff)
   );
-  wire c_alu1sel;
-  wire c_alu2sel;
   wire [4:0] c_rs1;
   wire [4:0] c_rs2;
   wire [31:0] c_imm;
   control ir1ControlModule(
     .ins(ir1),
-    .alu1sel(c_alu1sel),
-    .alu2sel(c_alu2sel),
     .rs1(c_rs1),
     .rs2(c_rs2),
     .imm(c_imm)
@@ -82,51 +72,18 @@ module cpu(input clk, input reset);
     .rs1(rs1),
     .rs2(rs2)
   );
-  wire [31:0] alu1mux;
-  multiplexer2to1 alu1MultiplexerModule(
-    .sel(c_alu1sel),
-    .in1(rs1),
-    .in2(dbuff),
-    .out(alu1mux)
-  );
-  wire [31:0] alu2mux;
-  multiplexer2to1 alu2MultiplexerModule(
-    .sel(c_alu2sel),
-    .in1(rs2),
-    .in2(c_imm),
-    .out(alu2mux)
-  );
  
   // ** EXECUTE **
-  wire [31:0] ebuff1;
-  buffer executeBuffer1Module(
-    .clk(clk),
-    .in(alu1mux),
-    .out(ebuff1)
-  );
-  wire [31:0] ebuff2;
-  buffer executeBuffer2Module(
-    .clk(clk),
-    .in(alu2mux),
-    .out(ebuff2)
-  );
-  wire [31:0] ebuff3;
-  buffer executeBuffer3Module(
-    .clk(clk),
-    .in(rs2),
-    .out(ebuff3)
-  );
-  wire [31:0] ebuff4;
-  buffer executeBuffer4Module(
-    .clk(clk),
-    .in(incr),
-    .out(ebuff4)
-  );
   wire [31:0] ir2;
-  buffer ir2BufferModule(
+  wire [31:0] ebuff1; // pc
+  wire [31:0] ebuff2; // rs1
+  wire [31:0] ebuff3; // rs2 
+  wire [31:0] ebuff4; // imm
+  wire [31:0] ebuff5; // pc + 4
+  buffer executeBufferModule(
     .clk(clk),
-    .in(ir1),
-    .out(ir2)
+    .in0(ir1), .in1(dbuff), .in2(rs1), .in3(rs2), .in4(c_imm), .in5(incr),
+    .out0(ir2), .out1(ebuff1), .out2(ebuff2), .out3(ebuff3), .out4(ebuff4), .out5(ebuff5)
   );
   wire [6:0] c_opcode;
   wire [2:0] c_funct3;
@@ -143,36 +100,29 @@ module cpu(input clk, input reset);
     .opcode(c_opcode),
     .funct3(c_funct3),
     .funct7(c_funct7),
-    .in1(ebuff1),
-    .in2(ebuff2),
+    .pc(ebuff1),
+    .rs1(ebuff2),
+    .rs2(ebuff3),
+    .imm(ebuff4),
     .zero(zero),
     .out(alu)
   );
  
   // ** MEMORY ** 
-  wire [31:0] mbuff1;
-  buffer memoryBuffer1Module(
-    .clk(clk),
-    .in(alu),
-    .out(mbuff1)
-  );
-  wire [31:0] mbuff2;
-  buffer memoryBuffer2Module(
-    .clk(clk),
-    .in(ebuff3),
-    .out(mbuff2)
-  );
-  wire [31:0] mbuff3;
-  buffer memoryBuffer3Module(
-    .clk(clk),
-    .in(ebuff4),
-    .out(mbuff3)
-  );
   wire [31:0] ir3;
-  buffer ir3BufferModule(
+  wire [31:0] mbuff1; // alu
+  wire [31:0] mbuff2; // rs2
+  wire [31:0] mbuff3; // pc + 4
+  buffer memoryBufferModule(
     .clk(clk),
-    .in(ir2),
-    .out(ir3)
+    .in0(ir2),
+    .in1(alu),
+    .in2(ebuff3),
+    .in3(ebuff5),
+    .out0(ir3),
+    .out1(mbuff1),
+    .out2(mbuff2),
+    .out3(mbuff3)
   );
   wire c_memwrite;
   wire [1:0] c_memarea;
@@ -202,17 +152,14 @@ module cpu(input clk, input reset);
   );
   
   // ** WRITE BACK **
-  wire [31:0] wbuff;
-  buffer writebackBuffer(
-    .clk(clk),
-    .in(memmux),
-    .out(wbuff)
-  );
   wire [31:0] ir4;
-  buffer ir4BufferModule(
+  wire [31:0] wbuff;
+  buffer writebackBufferModule(
     .clk(clk),
-    .in(ir3),
-    .out(ir4)
+    .in0(ir3),
+    .in1(memmux),
+    .out0(ir4),
+    .out1(wbuff)
   );
   wire c_regwrite;
   wire [4:0] c_rd;

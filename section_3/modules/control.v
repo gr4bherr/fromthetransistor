@@ -1,8 +1,6 @@
 module control(
   input [31:0] ins,
   // ir1 - decode
-  output reg alu1sel, // 0: rs1, 1: pc
-  output reg alu2sel, // 0: rs2, 1: imm
   output reg [4:0] rs1,
   output reg [4:0] rs2,
   output reg [31:0] imm,
@@ -24,8 +22,6 @@ module control(
     funct3 = (opcode != `op_u & opcode != `op_u_pc & opcode != `op_j) ? ins[14:12] : 32'bz;
     funct7 = ins[31:25];
     // decode
-    alu1sel = (opcode == `op_u_pc | opcode == `op_b | opcode == `op_j) ? 1'b1 : 1'b0;
-    alu2sel = (opcode != `op_r) ? 1'b1 : 1'b0;
     rs1 = (opcode != `op_u & opcode != `op_u_pc & opcode != `op_j) ? ins[19:15] : 32'bz;
     rs2 = (opcode == `op_b | opcode == `op_s | opcode == `op_r) ? ins[24:20] : 32'bz;
     case (opcode)
