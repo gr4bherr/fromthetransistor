@@ -40,7 +40,7 @@ module cpu(input clk, input reset);
   multiplexer2to1 pcMultiplexerModule(
     .sel(zero),
     .in1(incr),
-    .in2(ebuff4),
+    .in2(alu),
     .out(pcmux)
   );
   
@@ -69,12 +69,6 @@ module cpu(input clk, input reset);
     .rs1(c_rs1),
     .rs2(c_rs2),
     .imm(c_imm)
-  );
-  wire [31:0] add;
-  adder pcAdderModule(
-    .in1(dbuff),
-    .in2(c_imm),
-    .out(add)
   );
   wire [31:0] rs1;
   wire [31:0] rs2;
@@ -125,14 +119,8 @@ module cpu(input clk, input reset);
   wire [31:0] ebuff4;
   buffer executeBuffer4Module(
     .clk(clk),
-    .in(add),
-    .out(ebuff4)
-  );
-  wire [31:0] ebuff5;
-  buffer executeBuffer5Module(
-    .clk(clk),
     .in(incr),
-    .out(ebuff5)
+    .out(ebuff4)
   );
   wire [31:0] ir2;
   buffer ir2BufferModule(
@@ -143,13 +131,11 @@ module cpu(input clk, input reset);
   wire [6:0] c_opcode;
   wire [2:0] c_funct3;
   wire [6:0] c_funct7;
-  wire [4:0] c_shamt;
   control ir2ControlModule(
     .ins(ir2),
     .opcode(c_opcode),
     .funct3(c_funct3),
-    .funct7(c_funct7),
-    .shamt(c_shmat)
+    .funct7(c_funct7)
   );
   wire zero;
   wire [31:0] alu;
@@ -157,7 +143,6 @@ module cpu(input clk, input reset);
     .opcode(c_opcode),
     .funct3(c_funct3),
     .funct7(c_funct7),
-    .shamt(c_shamt),
     .in1(ebuff1),
     .in2(ebuff2),
     .zero(zero),
@@ -180,7 +165,7 @@ module cpu(input clk, input reset);
   wire [31:0] mbuff3;
   buffer memoryBuffer3Module(
     .clk(clk),
-    .in(ebuff5),
+    .in(ebuff4),
     .out(mbuff3)
   );
   wire [31:0] ir3;
@@ -190,16 +175,19 @@ module cpu(input clk, input reset);
     .out(ir3)
   );
   wire c_memwrite;
+  wire [1:0] c_memarea;
   wire [1:0] c_memsel;
   control ir3ControlModule(
     .ins(ir3),
     .memwrite(c_memwrite),
+    .memarea(c_memarea),
     .memsel(c_memsel)
   );
   wire [31:0] dmem;
   dataMemory dataMemoryModule(
     .clk(clk),
-    .memwrite(c_memwrite),
+    .write(c_memwrite),
+    .area(c_memarea),
     .address(mbuff1),
     .datain(mbuff2),
     .dataout(dmem)  
@@ -233,5 +221,4 @@ module cpu(input clk, input reset);
     .regwrite(c_regwrite),
     .rd(c_rd)
   );
-  
 endmodule

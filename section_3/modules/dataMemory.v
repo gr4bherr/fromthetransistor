@@ -1,19 +1,18 @@
 module dataMemory(
   input clk,
-  input memwrite,
+  input write,
+  input [1:0] area,
   input [31:0] address,
   input [31:0] datain,
   output [31:0] dataout
 );
-  reg [31:0] dmem [0:1023]; // 1 KB
-  reg [31:0] buffer;
+  reg [31:0] dmem [0:`dmemsize - 1]; // 1 KB
 
-  assign dataout = buffer;
+  assign dataout = dmem[address][2 ** (3 + area) - 1];
 
   always @(posedge clk) begin
-    buffer <= dmem[address];
-    if (memwrite) begin
-      dmem[address] <= datain;
+    if (write) begin
+      dmem[address] <= datain[2 ** (3 + area) - 1];
     end
   end
 

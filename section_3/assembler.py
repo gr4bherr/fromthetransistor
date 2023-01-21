@@ -80,23 +80,20 @@ symboltable = { # [type, opcode, funct3]
 
 # machine instruction registers
 miregs = {
-  "mcause" : bin(0x342),
   "mhartid" : bin(0xf14),
-  "mtvec" : bin(0x305),
-  "satp" : bin(0x180),
+  "cycle" : bin(0xc00),
   "pmpaddr0" : bin(0x3b0),
   "pmpcfg0" : bin(0x3a0),
-  "mie" : bin(0x304),
-  "medeleg" : bin(0x302),
-  "mideleg" : bin(0x303),
-  "stvec" : bin(0x105),
-  "mstatus" : bin(0x300),
   "mepc" : bin(0x341),
-  "cycle" : bin(0xc00)
+  "mcause" : bin(0x342),
+  "mtvec" : bin(0x305),
+  "mie" : bin(0x304),
+  "mideleg" : bin(0x303),
+  "medeleg" : bin(0x302),
+  "mstatus" : bin(0x300),
+  "satp" : bin(0x180),
+  "stvec" : bin(0x105)
 }
-
-# 0 0000000010 0 00000000   01011 1101111
-# 10 (0) 
 
 # register values (with abi names)
 regs =  {f"x{i}": f"{i:05b}" for i in range(32)} | \

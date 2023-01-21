@@ -2,7 +2,7 @@ module instructionMemory(
   input [31:0] address,
   output [31:0] instruction
 );
-  reg [31:0] imem [0:`imemsize-1]; // 1 KB
+  reg [31:0] imem [0:`imemsize - 1]; 
   assign instruction = imem[address/4];
 
   always @(instruction) begin

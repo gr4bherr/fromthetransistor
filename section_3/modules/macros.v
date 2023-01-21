@@ -1,4 +1,6 @@
-`define imemsize 1024
+
+`define imemsize 2048 // 2 KB
+`define dmemsize 1024 // 1 KB
 // opcode
 `define op_r      7'b0110011
 
