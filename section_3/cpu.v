@@ -12,6 +12,8 @@
 `include "modules/pcRegister.v"
 `include "modules/registerBank.v"
 
+// dont care about pipeline hazards (think it works fine like this)
+
 // **** MAIN MODULE ****
 module cpu(input clk, input reset);
 
@@ -30,7 +32,7 @@ module cpu(input clk, input reset);
   wire [31:0] incr;
   adder pcIncrementModule(
     .in1(4),
-    .in2(dbuff),
+    .in2(pc),
     .out(incr)
   );
   wire [31:0] pcmux;

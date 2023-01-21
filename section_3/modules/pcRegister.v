@@ -1,6 +1,5 @@
 module pcRegister(
   input clk,
-  input reset,
   input [31:0] in,
   output [31:0] out
 );
@@ -14,8 +13,8 @@ module pcRegister(
     // end
     // else begin
     i = i + 1;
-    if (i % 5 == 0)
-      pc <= in;
+    //if (i % 5 == 0)
+    pc <= in;
     // end
   end
 endmodule
