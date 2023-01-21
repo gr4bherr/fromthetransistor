@@ -8,17 +8,11 @@ module cpuTB();
   cpu riscv(.clk(clk), .reset(reset));
 
   initial begin
-    $display("**** TESTBENCH ****");
     $dumpfile("cpu.vcd");
     $dumpvars(0);
-    reset <= 1;
-    #20
-    reset <= 0;
-    //#1_000_000 // 1ms
-    //#500 // 200ns
-    #20_000
+    #100_000 // 100 us
     $finish;
   end
 endmodule
 
-// iverilog -o cpu.out cpuTB.v cpu.v && ./cpu.out
+// iverilog -DTEST=0 -o cpu.out cpuTB.v cpu.v && ./cpu.out

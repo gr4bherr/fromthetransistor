@@ -82,8 +82,18 @@ module cpu(input clk, input reset);
   wire [31:0] ebuff5; // pc + 4
   buffer executeBufferModule(
     .clk(clk),
-    .in0(ir1), .in1(dbuff), .in2(rs1), .in3(rs2), .in4(c_imm), .in5(incr),
-    .out0(ir2), .out1(ebuff1), .out2(ebuff2), .out3(ebuff3), .out4(ebuff4), .out5(ebuff5)
+    .in0(ir1), 
+    .in1(dbuff), 
+    .in2(rs1), 
+    .in3(rs2), 
+    .in4(c_imm), 
+    .in5(incr),
+    .out0(ir2), 
+    .out1(ebuff1), 
+    .out2(ebuff2), 
+    .out3(ebuff3), 
+    .out4(ebuff4), 
+    .out5(ebuff5)
   );
   wire [6:0] c_opcode;
   wire [2:0] c_funct3;

@@ -10,13 +10,6 @@ module alu(
   output reg [31:0] out
 );
   always @(*) begin
-    //zero = (opcode == `op_b | opcode == `op_j | opcode == `op_i_jalr) ? 1'b1 : 1'b0;
-
-    // zeroextend: sltu, sltiu, lbu, lhu, bgeu, bltu
-    // (op_i | op_r) & `SLTU; op_i_load & (100 | 101); op_b & (110 | 111)
-    // signextend: sra, srai, 
-    // (op_i | op_r) & srl_sra & 0100000
-
     zero = 0;
      // arithmetic & logical
     case (opcode)
@@ -45,15 +38,15 @@ module alu(
     // jal, jalr
     end `op_j: begin
       zero = 1;
-      out = pc + imm;
+      out = $signed(pc) + $signed(imm[20:0]);
     end
     `op_i_jalr: begin
       zero = 1;
-      out = rs1 + imm;
+      out = $signed(rs1) + $signed(imm[11:0]);
     end
     // branch
     `op_b: begin
-      out = pc + imm;
+      out = $signed(pc) + $signed(imm[12:0]);
       case (funct3) 
       `BEQ: begin
         if (rs1 == rs2) zero = 1;

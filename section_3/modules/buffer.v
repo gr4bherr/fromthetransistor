@@ -6,14 +6,12 @@ module buffer(
   input [31:0] in3,
   input [31:0] in4,
   input [31:0] in5,
-  input [31:0] in6,
   output [31:0] out0,
   output [31:0] out1,
   output [31:0] out2,
   output [31:0] out3,
   output [31:0] out4,
-  output [31:0] out5,
-  output [31:0] out6
+  output [31:0] out5
 ); 
   reg [31:0] buffer0;
   reg [31:0] buffer1;
@@ -21,7 +19,6 @@ module buffer(
   reg [31:0] buffer3;
   reg [31:0] buffer4;
   reg [31:0] buffer5;
-  reg [31:0] buffer6;
 
   assign out0 = buffer0;
   assign out1 = buffer1;
@@ -29,7 +26,6 @@ module buffer(
   assign out3 = buffer3;
   assign out4 = buffer4;
   assign out5 = buffer5;
-  assign out6 = buffer6;
 
   always @(posedge clk) begin
     buffer0 <= in0;
@@ -38,6 +34,5 @@ module buffer(
     buffer3 <= in3;
     buffer4 <= in4;
     buffer5 <= in5;
-    buffer6 <= in6;
   end
 endmodule
