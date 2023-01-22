@@ -14,8 +14,8 @@
 `define op_u      7'b0010111
 `define op_j      7'b1101111
 
-`define op_fence     7'b0001111
-`define op_csr       7'b1110011 // and ecall, ebreak
+`define op_fence  7'b0001111
+`define op_csr    7'b1110011 // and ecall, ebreak
 
 // funct3
 `define ADD_SUB 3'b000

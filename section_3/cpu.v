@@ -25,7 +25,7 @@ module cpu(input clk, input reset);
     .out(pc)
   );
   wire [31:0] imem;
-  instructionMemory instructionMemoryModule(
+  instructionMemory instructionMemoryModule( // rom
     .address(pc),
     .instruction(imem)
   );
@@ -146,7 +146,7 @@ module cpu(input clk, input reset);
     .memsel(c_memsel)
   );
   wire [31:0] dmem;
-  dataMemory dataMemoryModule(
+  dataMemory dataMemoryModule( // bram
     .clk(clk),
     .write(c_memwrite),
     .area(c_memarea),

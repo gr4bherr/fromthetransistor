@@ -150,7 +150,7 @@ def pseudo(p):
     exit()
 
 
-# **** FIRST PASS ****
+# **** FIRST PASS **** (lexing, parsing)
 def tokenize(name):
   with open(f"mytests/{name}.s", "r") as f:
     res = []
@@ -182,7 +182,7 @@ def tokenize(name):
         insnum += 1
   return res
 
-# **** SECOND PASS ****
+# **** SECOND PASS **** (code generation)
 def assemble(tok):
   res = ""
   out = []

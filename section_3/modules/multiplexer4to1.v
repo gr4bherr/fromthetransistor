@@ -8,10 +8,8 @@ module multiplexer4to1(
 );
   always @(*) begin
     case(sel)
-      // default pc + 4
-      2'b00, 2'bx: // todo: not sure if 2'bx is allowed
+      2'b00:
         out = in1;
-      // pc + 4 - 4+ imm // todo: fuck incrementer
       2'b01: 
         out = in1 - 4 + in2;
       2'b10:

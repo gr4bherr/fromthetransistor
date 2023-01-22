@@ -9,6 +9,5 @@ module multiplexer2to1(
       1'b0: out = in1;
       1'b1: out = in2;
     endcase
-    // todo add else if xxxxx
   end
 endmodule
