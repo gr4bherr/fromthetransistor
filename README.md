@@ -1,3 +1,4 @@
+[instructions from geohot/fromthetransistor](https://github.com/geohot/fromthetransistor)
 # section 2: 
  - very basic led blink
  - very basic uart with reciever and transmitter 
