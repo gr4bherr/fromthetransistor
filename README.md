@@ -8,3 +8,5 @@
  - arm7: tried to make arm7 in verilog, is very complex, riscv easier
  - [arm7/assembler.py](section3/arm7/assembler.py): arm7tdmi assembler written in python
  - [arm7/cpu.v](section3/arm7/cpu.v): arm7tdmi written in python
+ # section 4:
+ - [compiler.hs](section4/compiler.hs): c compiler written in haskell

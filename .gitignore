@@ -1,3 +1,7 @@
 .DS_Store
-section_3/riscv-tests
-section_3/mytests
+section3/riscv-tests
+section3/mytests
+section3/pdf
+section4/c-testsuite
+section4/mytests
+section4/pdf
