@@ -1,4 +1,4 @@
-instructions from: [github.com/geohot/fromthetransistor](github.com/geohot/fromthetransistor)
+instructions from: [github.com/geohot/fromthetransistor](https://github.com/geohot/fromthetransistor)
 # section 2: 
  - [ledBlink.v](section2/ledBlink.v): very basic led blink
  - [uart.v](section2/uart.v): very basic uart with reciever and transmitter 
