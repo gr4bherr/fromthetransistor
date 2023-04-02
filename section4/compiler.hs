@@ -1,19 +1,6 @@
-{-
-gcc compiler
-#read source file ~> tokenize ~> parse ~> reduce ~> optimize ~> encode to bytestring ~> write file
-soruce code text -> ir code -> machine code
-1. lexer
-2. ast
-3. parser
-4. intermidiate representation (assembly better)
-
-compilation:
-gcc -S test.c
-assembly:
-gcc -c 
--}
-
 import System.IO
+
+--ghc compiler.hs && ./compiler && ./test.py
 
 main :: IO ()
 main = do 
